@@ -1,0 +1,85 @@
+// src/types/character.ts
+
+/**
+ * 定义技能类型
+ * 使用联合类型 (Union Type) 来约束可接受的字符串值，提供比普通 `string` 更好的类型安全。
+ * - red: 红球
+ * - yellow: 黄球
+ * - blue: 蓝球
+ * - passive: 被动技能
+ * - ultimate: 终解/大招
+ * - qte: QTE技能
+ */
+export type SkillType = 'red' | 'yellow' | 'blue' | 'passive' | 'ultimate' | 'qte'
+
+/**
+ * 单个技能的数据结构接口
+ */
+export interface ISkill {
+  /** 技能图标的URL或本地路径 */
+  icon: string
+
+  /** 技能名称 */
+  name: string
+
+  /** 技能的详细描述，支持换行符 */
+  description: string
+
+  /** 技能的类型 */
+  type: SkillType
+}
+
+/**
+ * 推荐意识的数据结构接口
+ * (我们先定义结构，具体意识列表后续会作为常量数据引入)
+ */
+export interface IConsciousness {
+  /** 意识的唯一ID，用于在列表中进行精确查找和识别 */
+  id: number
+
+  /** 意识的名称，如：芭斯隆、列文虎克 */
+  name: string
+}
+
+/**
+ * 最终的角色核心数据结构接口
+ * 这是我们整个应用中流动的数据的“总蓝图”
+ */
+export interface ICharacter {
+  /** 角色的唯一标识符，可以使用英文名或特定ID，便于程序处理 */
+  id: string
+
+  /** 角色中文名称，如：露西亚·黎明 */
+  name: string
+
+  /** 角色型号/代号，如：B-029 */
+  codename: string
+
+  /** 角色头像的URL或本地路径 */
+  avatar: string
+
+  /** 初始品质，使用联合类型约束，防止输入错误 */
+  quality: 'S' | 'A' | 'B'
+
+  /** 职业/定位 */
+  class: '进攻型' | '装甲型' | '辅助型' | '增幅型' | '先锋型' | '湮灭型' | '观测者'
+
+  /**
+   * 机体框架类型：泛用机体/独域机体/联动机体
+   * 这个分类决定了角色的底层操作机制
+   */
+  frameType: '泛用' | '独域' | '联动'
+
+  /** 伤害属性类型 */
+  damageType: '火' | '雷' | '暗' | '冰' | '物理' | '混合' | '空'
+
+  /** * 所有技能的集合
+   * 是一个由 ISkill 对象组成的数组
+   */
+  skills: ISkill[]
+
+  /** * 推荐的意识搭配组合
+   * 是一个由 IConsciousness 对象组成的数组
+   */
+  recommendedConsciousness: IConsciousness[]
+}

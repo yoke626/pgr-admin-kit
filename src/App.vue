@@ -1,30 +1,60 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+// 由于配置了自动导入，我们不需要在这里写 import 语句
 </script>
 
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <div class="common-layout">
+    <el-container>
+      <el-aside width="200px">
+        <div class="aside-placeholder">左侧菜单区域</div>
+      </el-aside>
+
+      <el-container>
+        <el-header>
+          <div class="header-placeholder">顶部导航区域</div>
+        </el-header>
+
+        <el-main>
+          <router-view />
+        </el-main>
+      </el-container>
+    </el-container>
   </div>
-  <HelloWorld msg="Vite + Vue" />
 </template>
 
 <style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+/* 为布局添加一些基本样式和背景色，方便我们看清结构 */
+.common-layout,
+.el-container {
+  height: 100vh;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+
+.el-header {
+  background-color: #B3C0D1;
+  color: #333;
+  text-align: center;
+  line-height: 60px;
 }
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+
+.el-aside {
+  background-color: #D3DCE6;
+  color: #333;
+  text-align: center;
+}
+
+.el-main {
+  background-color: #E9EEF3;
+  color: #333;
+  text-align: center;
+}
+
+/* 用于垂直居中显示占位文字 */
+.aside-placeholder,
+.header-placeholder,
+.main-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
 }
 </style>
