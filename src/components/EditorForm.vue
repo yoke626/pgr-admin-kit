@@ -1,9 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useCharacterStore } from '@/stores/characterStore'
 import { QUALITY_OPTIONS, CLASS_OPTIONS, FRAME_TYPE_OPTIONS, DAMAGE_TYPE_OPTIONS } from '@/constants/characterOptions'
+import SkillFormItem from './SkillFormItem.vue';  // 1. 导入子组件
+import type { ISkill } from '@/types/character';
+import { storeToRefs } from 'pinia';
+import { ALL_CONSCIOUSNESS } from '@/database/consciousnessData';
+import { downloadJson } from '@/utils/fileDownloader';
+import type { FormInstance, FormRules } from 'element-plus'
+import { ElMessage } from 'element-plus';
 
 const characterStore = useCharacterStore()
+
+const { character } = storeToRefs(characterStore); //解构出 character state
+// 3. 创建一个模板引用，用于获取 el-form 组件的实例
+const editorFormRef = ref<FormInstance>();
 
 // 关键：为每一个需要双向绑定的字段创建 computed 属性
 // get() 从 store 中读取数据
@@ -39,10 +50,69 @@ const damageType = computed({
     get: () => characterStore.character.damageType,
     set: (val) => characterStore.updateCharacterInfo('damageType', val),
 })
+
+// 2. 为意识选择创建一个特殊的 computed 属性
+// ElCheckboxGroup 的 v-model 通常绑定一个包含选中项 value 的数组（这里是意识的 id）
+const selectedConsciousnessIds = computed({
+    // getter：从 store state 的对象数组中，提取出 id 数组
+    get: () => character.value.recommendedConsciousness.map((c) => c.id),
+    // setter：当用户勾选时，会接收到一个新的 id 数组
+    set: (newIds) => {
+        // 根据新的 id 数组，从我们的“数据库”中筛选出完整的意识对象数组
+        const newSelection = ALL_CONSCIOUSNESS.filter((c) => newIds.includes(c.id));
+        // 调用 action 更新 state
+        characterStore.updateRecommendedConsciousness(newSelection);
+    },
+});
+
+// 4. 定义表单的校验规则
+const formRules = ref<FormRules>({
+    name: [
+        { required: true, message: '角色名称不能为空', trigger: 'blur' },
+        { max: 20, message: '名称长度不能超过20个字符', trigger: 'blur' },
+    ],
+    codename: [{ required: true, message: '角色型号不能为空', trigger: 'blur' }],
+})
+// 2. 定义处理子组件事件的方法，它们会调用 store 的 actions
+function handleUpdateSkill(
+    index: number,
+    field: keyof ISkill,
+    value: ISkill[keyof ISkill]
+) {
+    characterStore.updateSkillField(index, field, value);
+}
+
+function handleRemoveSkill(index: number) {
+    characterStore.removeSkill(index);
+}
+
+// 2. 创建一个处理导出的方法
+function handleExportJson() {
+    // 从 store 中获取当前最新的、非响应式的角色数据
+    const characterData = characterStore.character;
+    // 创建一个动态的文件名
+    const filename = `${characterData.name || '未命名角色'}.json`;
+    // 调用工具函数进行下载
+    downloadJson(characterData, filename);
+}
+
+// 5. 新增一个手动触发全表单校验的方法
+async function handleValidate() {
+    if (!editorFormRef.value) return
+    await editorFormRef.value.validate((valid, fields) => {
+        if (valid) {
+            ElMessage({ type: 'success', message: '表单校验通过！' })
+        } else {
+            console.log('校验失败:', fields)
+            ElMessage({ type: 'error', message: '表单存在错误项，请检查。' })
+        }
+    })
+}
 </script>
 
 <template>
     <div class="editor-form">
+        <!-- 角色基础信息 -->
         <el-card shadow="never">
             <template #header>
                 <div class="card-header">
@@ -50,11 +120,11 @@ const damageType = computed({
                 </div>
             </template>
 
-            <el-form :model="characterStore.character" label-width="100px">
-                <el-form-item label="角色名称">
+            <el-form ref="editorFormRef" :model="character" :rules="formRules" label-width="100px">
+                <el-form-item label="角色名称" prop="name">
                     <el-input v-model="name" placeholder="请输入角色中文名" />
                 </el-form-item>
-                <el-form-item label="角色型号">
+                <el-form-item label="角色型号" prop="codename">
                     <el-input v-model="codename" placeholder="请输入角色型号/代号" />
                 </el-form-item>
                 <el-form-item label="初始品质">
@@ -82,6 +152,51 @@ const damageType = computed({
                     </el-select>
                 </el-form-item>
             </el-form>
+
+
+        </el-card>
+        <!-- 技能列表 -->
+        <el-card shadow="never" style="margin-top: 20px;">
+            <template #header>
+                <div class="card-header">
+                    <span>技能配置</span>
+                </div>
+            </template>
+
+            <SkillFormItem v-for="(skill, index) in character.skills" :key="index" :skill="skill" :index="index"
+                @update:skill="handleUpdateSkill" @remove="handleRemoveSkill" />
+
+            <el-button type="primary" style="width: 100%;" plain @click="characterStore.addSkill">
+                添加新技能
+            </el-button>
+        </el-card>
+        <!-- 意识搭配 -->
+        <el-card shadow="never" style="margin-top: 20px;">
+            <template #header>
+                <div class="card-header">
+                    <span>推荐意识搭配</span>
+                </div>
+            </template>
+            <el-checkbox-group v-model="selectedConsciousnessIds">
+                <el-checkbox v-for="consciousness in ALL_CONSCIOUSNESS" :key="consciousness.id"
+                    :label="consciousness.id" border>
+                    {{ consciousness.name }}
+                </el-checkbox>
+            </el-checkbox-group>
+        </el-card>
+
+        <el-card shadow="never" style="margin-top: 20px;">
+            <template #header>
+                <div class="card-header">
+                    <span>操作</span>
+                </div>
+            </template>
+            <el-button type="success" @click="handleExportJson">
+                生成 JSON 文件
+            </el-button>
+            <el-button @click="handleValidate">
+                校验表单
+            </el-button>
         </el-card>
     </div>
 </template>
@@ -89,5 +204,11 @@ const damageType = computed({
 <style scoped>
 .editor-form {
     padding: 20px;
+}
+
+/* 为多选框添加一些间距，让布局更好看 */
+.el-checkbox.is-bordered {
+    margin-bottom: 10px;
+    margin-right: 10px;
 }
 </style>
