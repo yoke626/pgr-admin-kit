@@ -8,7 +8,7 @@ import { storeToRefs } from 'pinia';
 import { ALL_CONSCIOUSNESS } from '@/database/consciousnessData';
 import { downloadJson } from '@/utils/fileDownloader';
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 
 const characterStore = useCharacterStore()
 
@@ -94,6 +94,28 @@ function handleExportJson() {
     const filename = `${characterData.name || '未命名角色'}.json`;
     // 调用工具函数进行下载
     downloadJson(characterData, filename);
+    //新增：操作成功反馈
+    ElMessage({ type: 'success', message: `角色'${filename}'已成功导出!` })
+}
+
+// ▼▼▼ 新增：重置表单的方法 ▼▼▼
+async function handleReset() {
+    try {
+        await ElMessageBox.confirm(
+            '确定要重置所有表单项吗？所有未保存的修改都将丢失。',
+            '重置确认',
+            {
+                confirmButtonText: '确定重置',
+                cancelButtonText: '取消',
+                type: 'warning',
+            }
+        )
+        // 如果用户确认，则调用 store 中的 action
+        characterStore.resetCharacterState()
+        ElMessage({ type: 'success', message: '表单已重置' })
+    } catch (error) {
+        ElMessage({ type: 'info', message: '已取消重置' })
+    }
 }
 
 // 5. 新增一个手动触发全表单校验的方法
@@ -196,6 +218,9 @@ async function handleValidate() {
             </el-button>
             <el-button @click="handleValidate">
                 校验表单
+            </el-button>
+            <el-button type="danger" plain @click="handleReset">
+                重置表单
             </el-button>
         </el-card>
     </div>
