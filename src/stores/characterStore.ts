@@ -1,13 +1,14 @@
 import { defineStore } from 'pinia'
 import type { ICharacter, ISkill, IConsciousness } from '@/types/character'
+import { v4 as uuidv4 } from 'uuid'
 
-// 为了方便重置状态，我们可以在 store 外部定义一个初始状态生成函数
+// 初始状态生成函数
 const createDefaultCharacterState = (): ICharacter => ({
-  id: `character_${new Date().getTime()}`, // 临时生成一个唯一ID
-  name: '露西亚·黎明',
-  codename: '破晓',
+  id: uuidv4(),
+  name: '新角色',
+  codename: '代号',
   avatar: '',
-  quality: 'S',
+  quality: 'A',
   class: '进攻型',
   frameType: '泛用',
   damageType: '物理',
@@ -16,86 +17,115 @@ const createDefaultCharacterState = (): ICharacter => ({
 })
 
 export const useCharacterStore = defineStore('character', {
-  /**
-   * State: 定义状态的地方。
-   * 这里我们返回一个函数，函数返回一个对象，确保每个实例的状态都是独立的。
-   * 我们使用 JSON.parse(JSON.stringify(...)) 来创建一个深拷贝，防止对象引用问题。
-   */
   state: () => ({
-    character: createDefaultCharacterState(),
+    characters: [] as ICharacter[],
+    activeCharacterId: null as string | null,
   }),
 
-  /**
-   * Getters: 类似于组件的 computed 属性。
-   * 用于从 state 派生出一些新的状态，例如对数据进行筛选、计算等。
-   */
   getters: {
-    // 示例：一个简单的 getter，返回角色的名字和型号
-    fullName: (state) => `${state.character.name} - ${state.character.codename}`,
+    activeCharacter(state): ICharacter | null {
+      if (!state.activeCharacterId) return null
+      return state.characters.find((c) => c.id === state.activeCharacterId) || null
+    },
+    characterList(state): ICharacter[] {
+      return state.characters
+    },
   },
 
-  /**
-   * Actions: 修改 state 的方法。
-   * 这里的函数可以是异步的，你可以在这里编写复杂的业务逻辑。
-   * 严禁在 action 之外直接修改 state。
-   */
   actions: {
     /**
-     * 更新角色基础信息
-     * @param field - ICharacter 中的一个键
-     * @param value - 对应键的新值
+     * FIX: 新增一个初始化和数据校验的 action
      */
-    updateCharacterInfo<K extends keyof ICharacter>(field: K, value: ICharacter[K]) {
-      this.character[field] = value
-    },
+    initializeStore() {
+      // 1. 检查持久化后的数据是否是旧格式 (characters 不是数组)
+      if (!Array.isArray(this.characters)) {
+        console.warn('检测到旧版本状态，将重置角色仓库。')
+        this.characters = []
+        this.activeCharacterId = null
+      }
 
-    /**
-     * 重置整个角色的状态为初始默认值
-     */
-    resetCharacterState() {
-      this.character = createDefaultCharacterState()
-    },
+      // 2. 如果角色列表不为空，但没有激活的ID，则默认激活第一个
+      if (this.characters.length > 0 && !this.activeCharacterId) {
+        this.activeCharacterId = this.characters[0].id
+      }
 
-    // 后续我们还会在这里添加更多 action，比如 addSkill, removeSkill 等
-    /**
-     * 添加技能
-     * @param skill 技能对象
-     */
-    addSkill() {
-      this.character.skills.push({
-        icon: '',
-        name: '新技能',
-        description: '',
-        type: 'red', //默认类型为红球
-      })
-    },
-
-    /**
-     * 删除技能
-     * @param index 技能索引
-     */
-    removeSkill(index: number) {
-      this.character.skills.splice(index, 1)
-    },
-
-    /**
-     * 更新指定技能的特定字段
-     * @param skillIndex - 技能索引
-     * @param field - 要更新的字段名称
-     * @param value - 要设置的字段值
-     */
-    updateSkillField<K extends keyof ISkill>(skillIndex: number, field: K, value: ISkill[K]) {
-      if (this.character.skills[skillIndex]) {
-        this.character.skills[skillIndex][field] = value
+      // 3. 如果角色列表为空，则创建一个新角色
+      if (this.characters.length === 0) {
+        this.addCharacter()
       }
     },
 
-    /**
-     * 接收一个新的意识对象数组，并更新到state中
-     * @param newSelection - 用户勾选的意识所对应的IConsciousness对象数组
-     */
+    addCharacter() {
+      const newCharacter = createDefaultCharacterState()
+      this.characters.push(newCharacter)
+      this.activeCharacterId = newCharacter.id
+    },
+
+    importCharacter(characterData: ICharacter) {
+      characterData.id = uuidv4()
+      this.characters.push(characterData)
+      this.activeCharacterId = characterData.id
+    },
+
+    setActiveCharacter(characterId: string) {
+      this.activeCharacterId = characterId
+    },
+
+    deleteCharacter(characterId: string) {
+      const index = this.characters.findIndex((c) => c.id === characterId)
+      if (index !== -1) {
+        this.characters.splice(index, 1)
+        if (this.activeCharacterId === characterId) {
+          this.activeCharacterId = this.characters.length > 0 ? this.characters[0].id : null
+        }
+      }
+    },
+
+    updateCharacterInfo<K extends keyof ICharacter>(field: K, value: ICharacter[K]) {
+      if (this.activeCharacter) {
+        this.activeCharacter[field] = value
+      }
+    },
+
+    resetCharacterState() {
+      if (this.activeCharacter) {
+        const index = this.characters.findIndex((c) => c.id === this.activeCharacterId)
+        if (index !== -1) {
+          const oldId = this.activeCharacterId
+          this.characters[index] = createDefaultCharacterState()
+          this.characters[index].id = oldId!
+        }
+      }
+    },
+
+    addSkill() {
+      if (this.activeCharacter) {
+        this.activeCharacter.skills.push({
+          icon: '',
+          name: '新技能',
+          description: '',
+          type: 'red',
+        })
+      }
+    },
+
+    removeSkill(index: number) {
+      if (this.activeCharacter) {
+        this.activeCharacter.skills.splice(index, 1)
+      }
+    },
+
+    updateSkillField<K extends keyof ISkill>(skillIndex: number, field: K, value: ISkill[K]) {
+      if (this.activeCharacter && this.activeCharacter.skills[skillIndex]) {
+        this.activeCharacter.skills[skillIndex][field] = value
+      }
+    },
+
     updateRecommendedConsciousness(newSelection: IConsciousness[]) {
-      this.character.recommendedConsciousness = newSelection
+      if (this.activeCharacter) {
+        this.activeCharacter.recommendedConsciousness = newSelection
+      }
     },
   },
+  persist: true,
 })
