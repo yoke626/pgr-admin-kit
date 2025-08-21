@@ -1,5 +1,14 @@
 <script setup lang="ts">
-// 由于配置了自动导入，我们不需要在这里写 import 语句
+import { onMounted } from 'vue';
+import { useCharacterStore } from '@/stores/characterStore';
+
+// 获取 store 实例
+const characterStore = useCharacterStore();
+
+// 当组件挂载后，执行 store 的初始化逻辑
+onMounted(() => {
+  characterStore.initializeStore();
+});
 </script>
 
 <template>
