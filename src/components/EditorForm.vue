@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DamageCalculator from './DamageCalculator.vue'
 import { computed, ref } from 'vue'
 import { useCharacterStore } from '@/stores/characterStore'
 import { QUALITY_OPTIONS, CLASS_OPTIONS, FRAME_TYPE_OPTIONS, DAMAGE_TYPE_OPTIONS } from '@/constants/characterOptions'
@@ -138,51 +139,119 @@ async function handleValidate() {
 </script>
 
 <template>
-    <div class="editor-form">
+    <div class="editor-form-container">
         <template v-if="activeCharacter">
-            <!-- 角色基础信息 -->
-            <el-card shadow="never">
+            <el-tabs type="border-card" class="editor-tabs">
+                <el-tab-pane label="基础信息">
+                    <el-form ref="editorFormRef" :model="activeCharacter" :rules="formRules" label-width="100px">
+                        <el-form-item label="角色名称" prop="name">
+                            <el-input v-model="name" placeholder="请输入角色中文名" />
+                        </el-form-item>
+                        <el-form-item label="角色型号" prop="codename">
+                            <el-input v-model="codename" placeholder="请输入角色型号/代号" />
+                        </el-form-item>
+                        <el-form-item label="初始品质">
+                            <el-select v-model="quality" placeholder="请选择">
+                                <el-option v-for="item in QUALITY_OPTIONS" :key="item.value" :label="item.label"
+                                    :value="item.value" />
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item label="职业定位">
+                            <el-select v-model="charClass" placeholder="请选择">
+                                <el-option v-for="item in CLASS_OPTIONS" :key="item.value" :label="item.label"
+                                    :value="item.value" />
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item label="机体框架">
+                            <el-select v-model="frameType" placeholder="请选择">
+                                <el-option v-for="item in FRAME_TYPE_OPTIONS" :key="item.value" :label="item.label"
+                                    :value="item.value" />
+                            </el-select>
+                        </el-form-item>
+                        <el-form-item label="伤害类型">
+                            <el-select v-model="damageType" placeholder="请选择">
+                                <el-option v-for="item in DAMAGE_TYPE_OPTIONS" :key="item.value" :label="item.label"
+                                    :value="item.value" />
+                            </el-select>
+                        </el-form-item>
+                    </el-form>
+                </el-tab-pane>
+                <el-tab-pane label="技能配置">
+                    <SkillFormItem v-for="(skill, index) in activeCharacter.skills" :key="index" :skill="skill"
+                        :index="index" @update:skill="handleUpdateSkill" @remove="handleRemoveSkill" />
+
+                    <el-button type="primary" style="width: 100%;" plain @click="characterStore.addSkill">
+                        添加新技能
+                    </el-button>
+                </el-tab-pane>
+                <el-tab-pane label="意识搭配">
+                    <el-checkbox-group v-model="selectedConsciousnessIds">
+                        <el-checkbox v-for="consciousness in ALL_CONSCIOUSNESS" :key="consciousness.id"
+                            :label="consciousness.id" border>
+                            {{ consciousness.name }}
+                        </el-checkbox>
+                    </el-checkbox-group>
+                </el-tab-pane>
+                <el-tab-pane label="数据看板" lazy>
+                    <DamageCalculator :character="activeCharacter" />
+                </el-tab-pane>
+                <el-tab-pane label="操作">
+                    <div class="action-buttons">
+                        <el-button type="success" @click="handleExportJson">
+                            导出 JSON 文件
+                        </el-button>
+                        <el-button type="primary" plain @click="handleImportJson">
+                            导入 JSON 文件
+                        </el-button>
+                        <el-button @click="handleValidate">
+                            校验表单
+                        </el-button>
+                        <el-button type="danger" plain @click="handleReset">
+                            重置表单
+                        </el-button>
+                    </div>
+                </el-tab-pane>
+            </el-tabs>
+        </template>
+        <!-- 角色基础信息 -->
+        <!-- <el-card shadow="never">
                 <template #header>
                     <div class="card-header">
                         <span>角色基础信息</span>
                     </div>
                 </template>
 
-                <el-form ref="editorFormRef" :model="activeCharacter" :rules="formRules" label-width="100px">
-                    <el-form-item label="角色名称" prop="name">
-                        <el-input v-model="name" placeholder="请输入角色中文名" />
-                    </el-form-item>
-                    <el-form-item label="角色型号" prop="codename">
-                        <el-input v-model="codename" placeholder="请输入角色型号/代号" />
-                    </el-form-item>
-                    <el-form-item label="初始品质">
-                        <el-select v-model="quality" placeholder="请选择">
-                            <el-option v-for="item in QUALITY_OPTIONS" :key="item.value" :label="item.label"
-                                :value="item.value" />
-                        </el-select>
-                    </el-form-item>
-                    <el-form-item label="职业定位">
-                        <el-select v-model="charClass" placeholder="请选择">
-                            <el-option v-for="item in CLASS_OPTIONS" :key="item.value" :label="item.label"
-                                :value="item.value" />
-                        </el-select>
-                    </el-form-item>
-                    <el-form-item label="机体框架">
-                        <el-select v-model="frameType" placeholder="请选择">
-                            <el-option v-for="item in FRAME_TYPE_OPTIONS" :key="item.value" :label="item.label"
-                                :value="item.value" />
-                        </el-select>
-                    </el-form-item>
-                    <el-form-item label="伤害类型">
-                        <el-select v-model="damageType" placeholder="请选择">
-                            <el-option v-for="item in DAMAGE_TYPE_OPTIONS" :key="item.value" :label="item.label"
-                                :value="item.value" />
-                        </el-select>
-                    </el-form-item>
-                </el-form>
-            </el-card>
-            <!-- 技能列表 -->
-            <el-card shadow="never" style="margin-top: 20px;">
+<el-form ref="editorFormRef" :model="activeCharacter" :rules="formRules" label-width="100px">
+    <el-form-item label="角色名称" prop="name">
+        <el-input v-model="name" placeholder="请输入角色中文名" />
+    </el-form-item>
+    <el-form-item label="角色型号" prop="codename">
+        <el-input v-model="codename" placeholder="请输入角色型号/代号" />
+    </el-form-item>
+    <el-form-item label="初始品质">
+        <el-select v-model="quality" placeholder="请选择">
+            <el-option v-for="item in QUALITY_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+    </el-form-item>
+    <el-form-item label="职业定位">
+        <el-select v-model="charClass" placeholder="请选择">
+            <el-option v-for="item in CLASS_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+    </el-form-item>
+    <el-form-item label="机体框架">
+        <el-select v-model="frameType" placeholder="请选择">
+            <el-option v-for="item in FRAME_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+    </el-form-item>
+    <el-form-item label="伤害类型">
+        <el-select v-model="damageType" placeholder="请选择">
+            <el-option v-for="item in DAMAGE_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+    </el-form-item>
+</el-form>
+</el-card> -->
+        <!-- 技能列表 -->
+        <!-- <el-card shadow="never" style="margin-top: 20px;">
                 <template #header>
                     <div class="card-header">
                         <span>技能配置</span>
@@ -195,9 +264,9 @@ async function handleValidate() {
                 <el-button type="primary" style="width: 100%;" plain @click="characterStore.addSkill">
                     添加新技能
                 </el-button>
-            </el-card>
-            <!-- 意识搭配 -->
-            <el-card shadow="never" style="margin-top: 20px;">
+            </el-card> -->
+        <!-- 意识搭配 -->
+        <!-- <el-card shadow="never" style="margin-top: 20px;">
                 <template #header>
                     <div class="card-header">
                         <span>推荐意识搭配</span>
@@ -209,9 +278,9 @@ async function handleValidate() {
                         {{ consciousness.name }}
                     </el-checkbox>
                 </el-checkbox-group>
-            </el-card>
-
-            <el-card shadow="never" style="margin-top: 20px;">
+            </el-card> -->
+        <!--操作-->
+        <!-- <el-card shadow="never" style="margin-top: 20px;">
                 <template #header>
                     <div class="card-header">
                         <span>操作</span>
@@ -229,17 +298,50 @@ async function handleValidate() {
                 <el-button type="danger" plain @click="handleReset">
                     重置表单
                 </el-button>
-            </el-card>
-        </template>
-        <el-card v-else shadow="never" style="text-align: center; padding: 40px;">
+            </el-card> -->
+        <!-- </template> -->
+        <!-- <el-card v-else shadow="never" class="empty-state-card">
             <p>当前没有正在编辑的角色。</p>
             <el-button type="primary" @click="characterStore.addCharacter">新建一个角色</el-button>
+        </el-card> -->
+        <el-card v-else shadow="never" class="empty-state-card">
+            <p>请在左侧列表选择或新建一个角色</p>
         </el-card>
     </div>
 </template>
 
 <style scoped>
-.editor-form {
+.editor-form-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-tabs {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+:deep(.el-tabs__content) {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.empty-state-card {
+    margin: 20px;
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #909399;
+}
+
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
     padding: 20px;
 }
 

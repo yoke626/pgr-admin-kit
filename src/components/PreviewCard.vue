@@ -1,9 +1,75 @@
 <script setup lang="ts">
 import { useCharacterStore } from '@/stores/characterStore'
 import { storeToRefs } from 'pinia'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 
 const characterStore = useCharacterStore()
 const { activeCharacter } = storeToRefs(characterStore)
+
+// 1. 创建模板引用来获取卡片DOM元素
+const cardWrapper = ref<HTMLElement | null>(null);
+const card = ref<HTMLElement | null>(null);
+
+// 2. 定义响应式变量来存储卡片的旋转角度和光标位置
+const rotateX = ref(0);
+const rotateY = ref(0);
+const glareX = ref(50);
+const glareY = ref(50);
+
+// 3. 处理鼠标移动事件
+const handleMouseMove = (e: MouseEvent) => {
+    if (!cardWrapper.value) return;
+
+    const rect = cardWrapper.value.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const width = rect.width;
+    const height = rect.height;
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    const deltaX = x - centerX;
+    const deltaY = y - centerY;
+
+    // 根据鼠标位置计算旋转角度，这里的 10 是灵敏度系数，可以调整
+    rotateY.value = (deltaX / centerX) * 10;
+    rotateX.value = -(deltaY / centerY) * 10;
+
+    // 更新光标位置百分比
+    glareX.value = (x / width) * 100;
+    glareY.value = (y / height) * 100;
+};
+
+// 4. 处理鼠标移出事件，重置卡片状态
+const handleMouseLeave = () => {
+    rotateX.value = 0;
+    rotateY.value = 0;
+};
+
+// 5. 在组件挂载和卸载时，添加/移除事件监听器
+onMounted(() => {
+    if (cardWrapper.value) {
+        cardWrapper.value.addEventListener('mousemove', handleMouseMove);
+        cardWrapper.value.addEventListener('mouseleave', handleMouseLeave);
+    }
+});
+
+onUnmounted(() => {
+    if (cardWrapper.value) {
+        cardWrapper.value.removeEventListener('mousemove', handleMouseMove);
+        cardWrapper.value.removeEventListener('mouseleave', handleMouseLeave);
+    }
+});
+
+// 6. 将响应式变量转换为计算属性，用于绑定到 style
+const cardStyle = computed(() => ({
+    '--rotate-x': `${rotateX.value}deg`,
+    '--rotate-y': `${rotateY.value}deg`,
+    '--glare-x': `${glareX.value}%`,
+    '--glare-y': `${glareY.value}%`,
+}));
 
 // 动态计算技能标签的类型
 const skillTagType = (type: string) => {
@@ -17,56 +83,102 @@ const skillTagType = (type: string) => {
 </script>
 
 <template>
-    <div class="preview-card">
-        <el-card>
-            <template #header>
-                <div class="card-header">
-                    <span>实时预览</span>
-                </div>
-            </template>
-            <div v-if="activeCharacter" class="card-body">
-                <el-image :src="activeCharacter.avatar || '/placeholder.png'" fit="cover" class="character-avatar" />
-                <el-descriptions :title="activeCharacter.name || '待命名'" :column="1" border>
-                    <el-descriptions-item label="型号">{{ activeCharacter.codename }}</el-descriptions-item>
-                    <el-descriptions-item label="品质">{{ activeCharacter.quality }}</el-descriptions-item>
-                    <el-descriptions-item label="职业">{{ activeCharacter.class }}</el-descriptions-item>
-                    <el-descriptions-item label="机体框架">{{ activeCharacter.frameType }}</el-descriptions-item>
-                    <el-descriptions-item label="伤害类型">{{ activeCharacter.damageType }}</el-descriptions-item>
-                </el-descriptions>
+    <div class="preview-card-contatiner">
+        <div ref="cardWrapper" class="card-3d-wrapper">
+            <div ref="card" class="preview-card" :style="cardStyle">
+                <el-card>
+                    <template #header>
+                        <div class="card-header">
+                            <span>实时预览</span>
+                        </div>
+                    </template>
+                    <div v-if="activeCharacter" class="card-body">
+                        <el-image :src="activeCharacter.avatar || '/placeholder.png'" fit="cover"
+                            class="character-avatar" />
+                        <el-descriptions :title="activeCharacter.name || '待命名'" :column="1" border>
+                            <el-descriptions-item label="型号">{{ activeCharacter.codename }}</el-descriptions-item>
+                            <el-descriptions-item label="品质">{{ activeCharacter.quality }}</el-descriptions-item>
+                            <el-descriptions-item label="职业">{{ activeCharacter.class }}</el-descriptions-item>
+                            <el-descriptions-item label="机体框架">{{ activeCharacter.frameType }}</el-descriptions-item>
+                            <el-descriptions-item label="伤害类型">{{ activeCharacter.damageType }}</el-descriptions-item>
+                        </el-descriptions>
 
-                <el-divider>技能</el-divider>
-                <div v-if="activeCharacter.skills.length === 0" class="empty-skills">暂未配置技能</div>
-                <div v-for="(skill, index) in activeCharacter.skills" v-else :key="index" class="skill-display-item">
-                    <div class="skill-header">
-                        <strong>{{ skill.name }}</strong>
-                        <el-tag size="small" :type="skillTagType(skill.type)">{{ skill.type }}</el-tag>
+                        <el-divider>技能</el-divider>
+                        <div v-if="activeCharacter.skills.length === 0" class="empty-skills">暂未配置技能</div>
+                        <div v-for="(skill, index) in activeCharacter.skills" v-else :key="index"
+                            class="skill-display-item">
+                            <div class="skill-header">
+                                <strong>{{ skill.name }}</strong>
+                                <el-tag size="small" :type="skillTagType(skill.type)">{{ skill.type }}</el-tag>
+                            </div>
+                            <p class="skill-description">{{ skill.description }}</p>
+                        </div>
+
+                        <el-divider>推荐意识</el-divider>
+                        <div v-if="activeCharacter.recommendedConsciousness.length === 0" class="empty-skills">
+                            暂未配置意识
+                        </div>
+                        <div v-else class="consciousness-tags">
+                            <el-tag v-for="consciousness in activeCharacter.recommendedConsciousness"
+                                :key="consciousness.id" class="consciousness-tag" effect="plain">
+                                {{ consciousness.name }}
+                            </el-tag>
+                        </div>
                     </div>
-                    <p class="skill-description">{{ skill.description }}</p>
-                </div>
-
-                <el-divider>推荐意识</el-divider>
-                <div v-if="activeCharacter.recommendedConsciousness.length === 0" class="empty-skills">
-                    暂未配置意识
-                </div>
-                <div v-else class="consciousness-tags">
-                    <el-tag v-for="consciousness in activeCharacter.recommendedConsciousness" :key="consciousness.id"
-                        class="consciousness-tag" effect="plain">
-                        {{ consciousness.name }}
-                    </el-tag>
-                </div>
+                    <div v-else class="empty-preview">
+                        <p>请在左侧新建或选择一个角色以开始编辑</p>
+                    </div>
+                </el-card>
             </div>
-            <div v-else class="empty-preview">
-                <p>请在左侧新建或选择一个角色以开始编辑</p>
-            </div>
-        </el-card>
+        </div>
     </div>
 </template>
 
-<style scoped>
-.preview-card {
+<style scoped lang="scss">
+.preview-card-container {
     padding: 20px;
-    position: sticky;
-    top: 20px;
+}
+
+.card-3d-wrapper {
+    perspective: 1000px; //创建3D视口
+}
+
+.preview-card {
+    position: relative; // 保持相对定位用于伪元素
+
+    // 将3D变换直接应用到 el-card 组件上
+    :deep(.el-card) {
+        transform-style: preserve-3d;
+        transition: transform 0.1s ease-out, box-shadow 0.3s;
+        // 使用 CSS 变量来接收来自 JS 的动态值
+        transform: rotateX(var(--rotate-x)) rotateY(var(--rotate-y)) translateZ(0);
+
+        .card-3d-wrapper:hover & {
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+        }
+    }
+
+    // 光影扫过效果的伪元素
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at var(--glare-x) var(--glare-y),
+                rgba(255, 255, 255, 0.25),
+                rgba(255, 255, 255, 0) 50%);
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+        border-radius: 4px;
+        z-index: 2; // 确保光影在卡片内容之上
+    }
+
+    .card-3d-wrapper:hover &::after {
+        opacity: 1;
+    }
 }
 
 .character-avatar {
