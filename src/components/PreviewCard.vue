@@ -184,7 +184,7 @@ const skillTagType = (type: string) => {
 .character-avatar {
     width: 100%;
     margin-bottom: 20px;
-    background-color: #f5f7fa;
+    background-color: var(--el-fill-color);
     min-height: 150px;
 }
 
@@ -201,14 +201,14 @@ const skillTagType = (type: string) => {
 
 .skill-description {
     font-size: 14px;
-    color: #606266;
+    color: var(--el-text-color-regular);
     white-space: pre-wrap;
 }
 
 .empty-skills,
 .empty-preview {
     text-align: center;
-    color: #909399;
+    color: var(--el-text-color-secondary);
     padding: 20px 0;
 }
 

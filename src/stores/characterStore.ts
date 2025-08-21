@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { ICharacter, ISkill, IConsciousness } from '@/types/character'
 import { v4 as uuidv4 } from 'uuid'
+import { downloadJson } from '@/utils/fileDownloader'
 
 // 初始状态生成函数
 const createDefaultCharacterState = (): ICharacter => ({
@@ -20,6 +21,8 @@ export const useCharacterStore = defineStore('character', {
   state: () => ({
     characters: [] as ICharacter[],
     activeCharacterId: null as string | null,
+    isLoading: false, //新增一个加载状态
+    activeEditorTab: '基础信息' as string,
   }),
 
   getters: {
@@ -62,16 +65,26 @@ export const useCharacterStore = defineStore('character', {
     },
 
     importCharacter(characterData: ICharacter) {
-      characterData.id = uuidv4()
+      this.isLoading = true
+      //避免导入重复id
+      if (this.characters.some((c) => c.id === characterData.id)) {
+        characterData.id = uuidv4()
+      }
       this.characters.push(characterData)
       this.activeCharacterId = characterData.id
+      this.isLoading = false
     },
 
     setActiveCharacter(characterId: string) {
+      this.isLoading = true
       this.activeCharacterId = characterId
+      setTimeout(() => {
+        this.isLoading = false
+      }, 300)
     },
 
     deleteCharacter(characterId: string) {
+      this.isLoading = true
       const index = this.characters.findIndex((c) => c.id === characterId)
       if (index !== -1) {
         this.characters.splice(index, 1)
@@ -79,8 +92,21 @@ export const useCharacterStore = defineStore('character', {
           this.activeCharacterId = this.characters.length > 0 ? this.characters[0].id : null
         }
       }
+      this.isLoading = false
     },
 
+    // 新增：导出当前角色配置
+    exportActiveCharacter() {
+      if (!this.activeCharacter) return
+      const filename = `${this.activeCharacter.name || '未命名角色'}.json`
+      downloadJson(this.activeCharacter, filename)
+    },
+
+    // 新增：导出所有角色配置
+    exportAllCharacters() {
+      if (this.characters.length === 0) return
+      downloadJson(this.characters, 'all_characters.json')
+    },
     updateCharacterInfo<K extends keyof ICharacter>(field: K, value: ICharacter[K]) {
       if (this.activeCharacter) {
         this.activeCharacter[field] = value

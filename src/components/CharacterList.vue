@@ -67,13 +67,13 @@ const handleDeleteCharacter = async (character: ICharacter) => {
     display: flex;
     flex-direction: column;
     height: 100%;
-    background-color: #f5f7fa;
 }
 
 .header {
     padding: 15px;
-    border-bottom: 1px solid #e4e7ed;
+    border-bottom: 1px solid var(--el-border-color);
     text-align: center;
+    color: var(--el-text-color-primary);
 }
 
 .character-list {
@@ -91,15 +91,16 @@ const handleDeleteCharacter = async (character: ICharacter) => {
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.3s;
+    color: var(--el-text-color-primary);
 }
 
 .character-item:hover {
-    background-color: #e9eef3;
+    background-color: var(--el-bg-color-overlay);
 }
 
 .character-item.active {
-    background-color: #d9ecff;
-    color: #409eff;
+    background-color: var(--el-color-info);
+    color: var(--el-text-color-primary);
     font-weight: bold;
 }
 
@@ -113,12 +114,12 @@ const handleDeleteCharacter = async (character: ICharacter) => {
 
 .empty-list {
     text-align: center;
-    color: #909399;
+    color: var(--el-text-color-secondary);
     padding-top: 40px;
 }
 
 .footer {
     padding: 15px;
-    border-top: 1px solid #e4e7ed;
+    border-top: 1px solid var(--el-border-color);
 }
 </style>

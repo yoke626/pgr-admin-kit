@@ -1,0 +1,55 @@
+// src/styles/theme.scss
+
+/* 定义全局的暗黑主题
+  色彩规范来自 UI设计.md
+*/
+html.dark {
+  /* 主色 */
+  --el-color-primary: #40d3e3; // 高亮青色
+  --el-color-primary-light-3: #63dceb; // 变亮一些
+  --el-color-primary-light-5: #82e5f0;
+  --el-color-primary-light-7: #a1eef5;
+  --el-color-primary-light-8: #b2f2f8;
+  --el-color-primary-light-9: #d1f8fb;
+  --el-color-primary-dark-2: #33a9b5; // 变暗一些
+
+  /* 功能色 */
+  --el-color-success: #a3be8c;
+  --el-color-warning: #ebcb8b;
+  --el-color-danger: #bf616a;
+  --el-color-info: #818c9f;
+
+  /* 背景色 */
+  --el-bg-color: #242933; // 组件背景（卡片、输入框等）
+  --el-bg-color-page: #1a1f29; // 页面最底层背景
+  --el-bg-color-overlay: #2e3440; // 弹出层、模态框背景
+
+  /* 边框色 */
+  --el-border-color: #3b4252;
+  --el-border-color-light: #4c566a;
+  --el-border-color-lighter: #606879;
+  --el-border-color-extra-light: #757d8c;
+  --el-border-color-dark: #333945;
+  --el-border-color-darker: #2c313b;
+  --el-fill-color-blank: var(--el-bg-color-page); // 空白填充色
+
+  /* 填充色 (用于组件内部细节，如表格hover) */
+  --el-fill-color: #3b4252;
+  --el-fill-color-light: #4c566a;
+  --el-fill-color-lighter: #606879;
+  --el-fill-color-extra-light: #757d8c;
+  --el-fill-color-dark: #333945;
+  --el-fill-color-darker: #2c313b;
+
+  /* 文字色 */
+  --el-text-color-primary: #d8dee9;
+  --el-text-color-regular: #b8c1d2;
+  --el-text-color-secondary: #818c9f;
+  --el-text-color-placeholder: #606879;
+  --el-text-color-disabled: #4c566a;
+}
+
+/* 同时，为了让页面最底层的背景色生效 */
+body {
+  background-color: var(--el-bg-color-page);
+}

@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import DamageCalculator from './DamageCalculator.vue'
-import { computed, ref } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { useCharacterStore } from '@/stores/characterStore'
 import { QUALITY_OPTIONS, CLASS_OPTIONS, FRAME_TYPE_OPTIONS, DAMAGE_TYPE_OPTIONS } from '@/constants/characterOptions'
 import SkillFormItem from './SkillFormItem.vue';  // 1. 导入子组件
-import type { ISkill, ICharacter } from '@/types/character';
+import type { ISkill } from '@/types/character';
 import { storeToRefs } from 'pinia';
 import { ALL_CONSCIOUSNESS } from '@/database/consciousnessData';
-import { downloadJson } from '@/utils/fileDownloader';
-import { readJson } from '@/utils/fileReader';
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus';
 
@@ -77,32 +75,32 @@ function handleRemoveSkill(index: number) {
     characterStore.removeSkill(index);
 }
 
-function handleExportJson() {
-    if (!activeCharacter.value) {
-        ElMessage({ type: 'warning', message: '当前没有可导出的角色' });
-        return;
-    }
-    const characterData = activeCharacter.value;
-    const filename = `${characterData.name || '未命名角色'}.json`;
-    downloadJson(characterData, filename);
-    ElMessage({ type: 'success', message: `角色'${filename}'已成功导出!` })
-}
+// function handleExportJson() {
+//     if (!activeCharacter.value) {
+//         ElMessage({ type: 'warning', message: '当前没有可导出的角色' });
+//         return;
+//     }
+//     const characterData = activeCharacter.value;
+//     const filename = `${characterData.name || '未命名角色'}.json`;
+//     downloadJson(characterData, filename);
+//     ElMessage({ type: 'success', message: `角色'${filename}'已成功导出!` })
+// }
 
 // 新增：处理导入JSON
-async function handleImportJson() {
-    try {
-        const characterData = await readJson<ICharacter>();
-        // 你可以在这里添加更复杂的数据结构校验
-        if (characterData && characterData.name && characterData.id) {
-            characterStore.importCharacter(characterData);
-            ElMessage({ type: 'success', message: `角色'${characterData.name}'已成功导入!` });
-        } else {
-            ElMessage({ type: 'error', message: 'JSON文件格式不正确' });
-        }
-    } catch (error) {
-        ElMessage({ type: 'error', message: `导入失败: ${error}` });
-    }
-}
+// async function handleImportJson() {
+//     try {
+//         const characterData = await readJson<ICharacter>();
+//         // 你可以在这里添加更复杂的数据结构校验
+//         if (characterData && characterData.name && characterData.id) {
+//             characterStore.importCharacter(characterData);
+//             ElMessage({ type: 'success', message: `角色'${characterData.name}'已成功导入!` });
+//         } else {
+//             ElMessage({ type: 'error', message: 'JSON文件格式不正确' });
+//         }
+//     } catch (error) {
+//         ElMessage({ type: 'error', message: `导入失败: ${error}` });
+//     }
+// }
 
 // ▼▼▼ 新增：重置表单的方法 ▼▼▼
 async function handleReset() {
@@ -136,12 +134,37 @@ async function handleValidate() {
         }
     })
 }
+
+// ▼▼▼ 核心修改：用 computed 属性替换 local ref ▼▼▼
+const activeTab = computed({
+    get: () => characterStore.activeEditorTab,
+    set: (val) => (characterStore.activeEditorTab = val),
+});
+
+// 1. 创建一个 ref 来引用 DamageCalculator 组件实例
+const damageCalculatorRef = ref<InstanceType<typeof DamageCalculator> | null>(null);
+
+// 2. 创建一个 ref 来绑定 el-tabs 的 v-model，追踪当前激活的标签页
+//const activeTab = ref('基础信息');
+
+// 3. 监听 activeTab 的变化
+watch(activeTab, (newTab) => {
+    // 当新激活的标签页是'数据看板'，并且子组件已经加载时
+    if (newTab === '数据看板' && damageCalculatorRef.value) {
+        // 使用 nextTick 确保 DOM 已经完全可见
+        nextTick(() => {
+            // 调用子组件暴露出的 handleResize 方法
+            damageCalculatorRef.value?.resizeChart();
+        });
+    }
+});
+
 </script>
 
 <template>
     <div class="editor-form-container">
         <template v-if="activeCharacter">
-            <el-tabs type="border-card" class="editor-tabs">
+            <el-tabs v-model="activeTab" type="border-card" class="editor-tabs">
                 <el-tab-pane label="基础信息">
                     <el-form ref="editorFormRef" :model="activeCharacter" :rules="formRules" label-width="100px">
                         <el-form-item label="角色名称" prop="name">
@@ -192,17 +215,11 @@ async function handleValidate() {
                         </el-checkbox>
                     </el-checkbox-group>
                 </el-tab-pane>
-                <el-tab-pane label="数据看板" lazy>
-                    <DamageCalculator :character="activeCharacter" />
+                <el-tab-pane label="数据看板" name="数据看板" lazy>
+                    <DamageCalculator ref="damageCalculatorRef" :character="activeCharacter" />
                 </el-tab-pane>
                 <el-tab-pane label="操作">
                     <div class="action-buttons">
-                        <el-button type="success" @click="handleExportJson">
-                            导出 JSON 文件
-                        </el-button>
-                        <el-button type="primary" plain @click="handleImportJson">
-                            导入 JSON 文件
-                        </el-button>
                         <el-button @click="handleValidate">
                             校验表单
                         </el-button>
@@ -305,7 +322,7 @@ async function handleValidate() {
             <el-button type="primary" @click="characterStore.addCharacter">新建一个角色</el-button>
         </el-card> -->
         <el-card v-else shadow="never" class="empty-state-card">
-            <p>请在左侧列表选择或新建一个角色</p>
+            <p>从左侧列表选择或新建一个角色，开始你的配置吧！</p>
         </el-card>
     </div>
 </template>
@@ -317,17 +334,36 @@ async function handleValidate() {
     flex-direction: column;
 }
 
+/* :deep(.el-tabs--border-card) {
+    background-color: var(--pgr-bg);
+    border: 1px solid var(--pgr-border-color);
+} */
+
 .editor-tabs {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
 }
 
-:deep(.el-tabs__content) {
+/* :deep(.el-tabs__content) {
     flex-grow: 1;
     overflow-y: auto;
     padding: 20px;
+    background-color: var(--pgr-bg-light);
 }
+
+:deep(.el-tabs__header) {
+    background-color: var(--pgr-bg-lighter);
+    border-bottom: 1px solid var(--pgr-border-color);
+}
+
+:deep(.eltabs__items.is-active) {
+    color: var(--pgr-primary-color);
+}
+
+:deep(.el-tabs__item) {
+    color: var(--pgr-text-regular);
+} */
 
 .empty-state-card {
     margin: 20px;
@@ -335,7 +371,9 @@ async function handleValidate() {
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #909399;
+    /* color: var(--pgr-text-regular);
+    background-color: var(--pgr-bg);
+    border: 1px solid var(--pgr-border-color); */
 }
 
 .action-buttons {
