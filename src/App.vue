@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import { useCharacterStore } from '@/stores/characterStore';
+import CharacterList from './components/CharacterList.vue';
 
 // 获取 store 实例
 const characterStore = useCharacterStore();
@@ -14,8 +15,8 @@ onMounted(() => {
 <template>
   <div class="common-layout">
     <el-container>
-      <el-aside width="200px">
-        <div class="aside-placeholder">左侧菜单区域</div>
+      <el-aside width="250px">
+        <CharacterList />
       </el-aside>
 
       <el-container>
@@ -48,13 +49,13 @@ onMounted(() => {
 .el-aside {
   background-color: #D3DCE6;
   color: #333;
-  text-align: center;
 }
 
 .el-main {
   background-color: #E9EEF3;
   color: #333;
-  text-align: center;
+  padding: 0;
+  /* 移除内边距，让子页面控制 */
 }
 
 /* 用于垂直居中显示占位文字 */
