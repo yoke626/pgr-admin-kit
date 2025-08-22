@@ -46,6 +46,23 @@ const damageType = computed({
     set: (val) => characterStore.updateCharacterInfo('damageType', val),
 })
 
+const baseAttack = computed({
+    get: () => activeCharacter.value?.baseAttack ?? 0,
+    set: (val) => characterStore.updateCharacterInfo('baseAttack', val),
+})
+
+const critRate = computed({
+    // 从 store 读取时，乘以 100 变成百分比显示在输入框
+    get: () => (activeCharacter.value?.critRate ?? 0) * 100,
+    // 写入 store 时，除以 100 转换为小数保存
+    set: (val) => characterStore.updateCharacterInfo('critRate', val / 100),
+})
+
+const critDamage = computed({
+    get: () => (activeCharacter.value?.critDamage ?? 0) * 100,
+    set: (val) => characterStore.updateCharacterInfo('critDamage', val / 100),
+})
+
 
 const selectedConsciousnessIds = computed({
     get: () => activeCharacter.value?.recommendedConsciousness.map((c) => c.id) ?? [],
@@ -197,6 +214,23 @@ watch(activeTab, (newTab) => {
                                     :value="item.value" />
                             </el-select>
                         </el-form-item>
+
+                        <el-divider>战斗属性</el-divider>
+                        <el-form-item label="基础攻击力">
+                            <el-input-number v-model="baseAttack" :min="0" :step="100" controls-position="right"
+                                style="width: 100%" />
+                        </el-form-item>
+
+                        <el-form-item label="暴击率 (%)">
+                            <el-input-number v-model="critRate" :min="0" :max="100" :step="0.1"
+                                controls-position="right" style="width: 100%" />
+                        </el-form-item>
+
+                        <el-form-item label="暴击伤害 (%)">
+                            <el-input-number v-model="critDamage" :min="0" :step="10" controls-position="right"
+                                style="width: 100%" />
+                        </el-form-item>
+
                     </el-form>
                 </el-tab-pane>
                 <el-tab-pane label="技能配置">

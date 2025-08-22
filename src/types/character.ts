@@ -27,6 +27,12 @@ export interface ISkill {
 
   /** 技能的类型 */
   type: SkillType
+
+  /** 技能伤害倍率 */
+  multiplier: number
+
+  /** 伤害标签，用于区分伤害类型以应用不同增益 */
+  damageTag: '普攻' | '核心被动' | '红球' | '黄球' | '蓝球' | '终解' | 'QTE'
 }
 
 /**
@@ -72,6 +78,13 @@ export interface ICharacter {
 
   /** 伤害属性类型 */
   damageType: '火' | '雷' | '暗' | '冰' | '物理' | '混合' | '空'
+
+  /** 新增：基础攻击力 */
+  baseAttack: number
+  /** 新增：暴击率 (0-100的小数，70%) */
+  critRate: number
+  /** 新增：暴击伤害 */
+  critDamage: number
 
   /** * 所有技能的集合
    * 是一个由 ISkill 对象组成的数组

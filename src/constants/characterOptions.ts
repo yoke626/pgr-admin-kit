@@ -52,3 +52,17 @@ export const DAMAGE_TYPE_OPTIONS: SelectOption[] = [
   { value: '混合', label: '混合' },
   { value: '空', label: '空' },
 ]
+
+/**
+ * 新增：技能伤害标签选项
+ * 这些值应该与 types/character.ts 中 ISkill['damageTag'] 的联合类型保持一致
+ */
+export const DAMAGE_TAG_OPTIONS: SelectOption[] = [
+  { value: '普攻', label: '普攻' },
+  { value: '核心被动', label: '核心被动' },
+  { value: '红球', label: '红球' },
+  { value: '黄球', label: '黄球' },
+  { value: '蓝球', label: '蓝球' },
+  { value: '终解', label: '终解' },
+  { value: 'QTE', label: 'QTE' },
+]

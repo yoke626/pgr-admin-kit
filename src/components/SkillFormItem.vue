@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { ElMessageBox, ElMessage } from 'element-plus'
 import type { ISkill } from '@/types/character';
+import { DAMAGE_TAG_OPTIONS } from '@/constants/characterOptions';
 
 // 接收来自父组件的 props
 const props = defineProps<{
@@ -30,6 +31,16 @@ const description = computed({
     get: () => props.skill.description,
     set: (val) => emit('update:skill', props.index, 'description', val),
 });
+
+// 2. 为新字段创建 computed
+const multiplier = computed({
+    get: () => props.skill.multiplier,
+    set: (val) => emit('update:skill', props.index, 'multiplier', val),
+})
+const damageTag = computed({
+    get: () => props.skill.damageTag,
+    set: (val) => emit('update:skill', props.index, 'damageTag', val),
+})
 
 // 删除按钮的点击事件处理器
 async function handleRemove() {
@@ -73,6 +84,22 @@ async function handleRemove() {
                             <el-option label="被动" value="passive" />
                             <el-option label="大招" value="ultimate" />
                             <el-option label="QTE" value="qte" />
+                        </el-select>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="12">
+                    <el-form-item label="技能倍率 (%)">
+                        <el-input-number v-model="multiplier" :min="0" :step="0.1" controls-position="right"
+                            style="width: 100%" />
+                    </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                    <el-form-item label="伤害标签">
+                        <el-select v-model="damageTag" style="width: 100%">
+                            <el-option v-for="item in DAMAGE_TAG_OPTIONS" :key="item.value" :label="item.label"
+                                :value="item.value" />
                         </el-select>
                     </el-form-item>
                 </el-col>
