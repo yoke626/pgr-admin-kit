@@ -34,8 +34,8 @@ const handleMouseMove = (e: MouseEvent) => {
     const deltaY = y - centerY;
 
     // 根据鼠标位置计算旋转角度，这里的 10 是灵敏度系数，可以调整
-    rotateY.value = (deltaX / centerX) * 10;
-    rotateX.value = -(deltaY / centerY) * 10;
+    rotateY.value = (deltaX / centerX) * 5;
+    rotateX.value = -(deltaY / centerY) * 5;
 
     // 更新光标位置百分比
     glareX.value = (x / width) * 100;
@@ -144,14 +144,42 @@ const skillTagType = (type: string) => {
 }
 
 .preview-card {
-    position: relative; // 保持相对定位用于伪元素
+    position: relative;
+    // ▼▼▼ 新增：设置背景为透明，让伪元素背景可见 ▼▼▼
+    background: transparent;
+    // ▼▼▼ 新增：设置圆角，让描边效果更好看 ▼▼▼
+    border-radius: 8px;
+    // ▼▼▼ 新增：添加 transform-style ▼▼▼
+    transform-style: preserve-3d;
+    // ▼▼▼ 新增：应用3D旋转的CSS变量 ▼▼▼
+    transform: rotateX(var(--rotate-x)) rotateY(var(--rotate-y));
+    transition: transform 0.1s ease-out;
 
-    // 将3D变换直接应用到 el-card 组件上
+    // ▼▼▼ 新增：描边高光伪元素 ::before ▼▼▼
+    &::before {
+        content: '';
+        position: absolute;
+        inset: -2px; // 比卡片大一圈，形成边框
+        z-index: 0; // 位于卡片之下
+        border-radius: inherit; // 继承父元素的圆角
+        // 使用锥形渐变创建彩色光环，并使用var()接收鼠标位置
+        background: conic-gradient(from 180deg at var(--glare-x) var(--glare-y),
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.6) 10%,
+                rgba(255, 255, 255, 0) 25%);
+        filter: blur(5px); // 添加模糊效果，让光晕更柔和
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    // 将3D变换和阴影应用到 el-card 组件上
     :deep(.el-card) {
-        transform-style: preserve-3d;
-        transition: transform 0.1s ease-out, box-shadow 0.3s;
-        // 使用 CSS 变量来接收来自 JS 的动态值
-        transform: rotateX(var(--rotate-x)) rotateY(var(--rotate-y)) translateZ(0);
+        position: relative;
+        z-index: 1;
+        background-color: var(--el-card-bg-color, #ffffff); // 从CSS变量获取背景色
+        border-radius: 6px; // 比父元素稍小的圆角
+        transition: box-shadow 0.3s;
+        height: 100%;
 
         .card-3d-wrapper:hover & {
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
@@ -168,7 +196,7 @@ const skillTagType = (type: string) => {
         bottom: 0;
         background: radial-gradient(circle at var(--glare-x) var(--glare-y),
                 rgba(255, 255, 255, 0.25),
-                rgba(255, 255, 255, 0) 50%);
+                rgba(255, 255, 255, 0) 25%);
         opacity: 0;
         transition: opacity 0.2s;
         pointer-events: none;
@@ -176,8 +204,12 @@ const skillTagType = (type: string) => {
         z-index: 2; // 确保光影在卡片内容之上
     }
 
-    .card-3d-wrapper:hover &::after {
+    .card-3d-wrapper:hover &::before {
         opacity: 1;
+    }
+
+    .card-3d-wrapper:hover &::after {
+        opacity: 0.3;
     }
 }
 

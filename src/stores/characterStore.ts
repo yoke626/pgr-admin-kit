@@ -13,6 +13,10 @@ const createDefaultCharacterState = (): ICharacter => ({
   class: '进攻型',
   frameType: '泛用',
   damageType: '物理',
+  //新增属性默认值
+  baseAttack: 1000,
+  critRate: 0.5,
+  critDamage: 1.5,
   skills: [],
   recommendedConsciousness: [],
 })
@@ -131,6 +135,8 @@ export const useCharacterStore = defineStore('character', {
           name: '新技能',
           description: '',
           type: 'red',
+          multiplier: 1,
+          damageTag: '普攻',
         })
       }
     },
