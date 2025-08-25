@@ -7,8 +7,9 @@ import SkillFormItem from './SkillFormItem.vue';  // 1. 导入子组件
 import type { ISkill } from '@/types/character';
 import { storeToRefs } from 'pinia';
 import { ALL_CONSCIOUSNESS } from '@/database/consciousnessData';
-import type { FormInstance, FormRules } from 'element-plus'
+import type { FormInstance, FormRules, UploadProps } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { Plus } from '@element-plus/icons-vue';
 
 const characterStore = useCharacterStore()
 
@@ -92,33 +93,6 @@ function handleRemoveSkill(index: number) {
     characterStore.removeSkill(index);
 }
 
-// function handleExportJson() {
-//     if (!activeCharacter.value) {
-//         ElMessage({ type: 'warning', message: '当前没有可导出的角色' });
-//         return;
-//     }
-//     const characterData = activeCharacter.value;
-//     const filename = `${characterData.name || '未命名角色'}.json`;
-//     downloadJson(characterData, filename);
-//     ElMessage({ type: 'success', message: `角色'${filename}'已成功导出!` })
-// }
-
-// 新增：处理导入JSON
-// async function handleImportJson() {
-//     try {
-//         const characterData = await readJson<ICharacter>();
-//         // 你可以在这里添加更复杂的数据结构校验
-//         if (characterData && characterData.name && characterData.id) {
-//             characterStore.importCharacter(characterData);
-//             ElMessage({ type: 'success', message: `角色'${characterData.name}'已成功导入!` });
-//         } else {
-//             ElMessage({ type: 'error', message: 'JSON文件格式不正确' });
-//         }
-//     } catch (error) {
-//         ElMessage({ type: 'error', message: `导入失败: ${error}` });
-//     }
-// }
-
 // ▼▼▼ 新增：重置表单的方法 ▼▼▼
 async function handleReset() {
     try {
@@ -176,6 +150,26 @@ watch(activeTab, (newTab) => {
     }
 });
 
+const beforeAvatarUpload: UploadProps['beforeUpload'] = (rawFile) => {
+    const isImage = ['image/jpeg', 'image/png', 'image/gif'].includes(rawFile.type);
+    if (!isImage) {
+        ElMessage.error('请上传图片格式文件 (JPG, PNG, GIF)!');
+        return false;
+    }
+    const isLt5M = rawFile.size / 1024 / 1024 < 5;
+    if (!isLt5M) {
+        ElMessage.error('上传图片大小不能超过 5MB!');
+        return false;
+    }
+    const reader = new FileReader();
+    reader.readAsDataURL(rawFile);
+    reader.onload = () => {
+        const base64String = reader.result as string;
+        characterStore.updateCharacterInfo('avatar', base64String);
+        ElMessage.success('立绘更新成功!');
+    };
+    return false;
+};
 </script>
 
 <template>
@@ -254,12 +248,28 @@ watch(activeTab, (newTab) => {
                 </el-tab-pane>
                 <el-tab-pane label="操作">
                     <div class="action-buttons">
-                        <el-button @click="handleValidate">
-                            校验表单
-                        </el-button>
-                        <el-button type="danger" plain @click="handleReset">
-                            重置表单
-                        </el-button>
+                        <div class="action-item">
+                            <el-button @click="handleValidate">
+                                校验表单
+                            </el-button>
+                        </div>
+                        <div class="action-item">
+                            <el-button type="danger" plain @click="handleReset">
+                                重置表单
+                            </el-button>
+                        </div>
+
+                        <div class="action-item upload-item">
+                            <span class="action-label">角色立绘</span>
+                            <el-upload class="avatar-uploader" action="#" :show-file-list="false"
+                                :before-upload="beforeAvatarUpload">
+                                <el-image v-if="activeCharacter.avatar" :src="activeCharacter.avatar" class="avatar"
+                                    fit="cover" />
+                                <el-icon v-else class="avatar-uploader-icon">
+                                    <Plus />
+                                </el-icon>
+                            </el-upload>
+                        </div>
                     </div>
                 </el-tab-pane>
             </el-tabs>
@@ -362,16 +372,38 @@ watch(activeTab, (newTab) => {
 </template>
 
 <style scoped>
+.avatar-uploader .avatar {
+    width: 128px;
+    height: 128px;
+    display: block;
+}
+
+.avatar-uploader :deep(.el-upload) {
+    border: 1px dashed var(--el-border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: var(--el-transition-duration-fast);
+}
+
+.avatar-uploader :deep(.el-upload:hover) {
+    border-color: var(--el-color-primary);
+}
+
+.el-icon.avatar-uploader-icon {
+    font-size: 28px;
+    color: #8c939d;
+    width: 128px;
+    height: 128px;
+    text-align: center;
+}
+
 .editor-form-container {
     height: 100%;
     display: flex;
     flex-direction: column;
 }
-
-/* :deep(.el-tabs--border-card) {
-    background-color: var(--pgr-bg);
-    border: 1px solid var(--pgr-border-color);
-} */
 
 .editor-tabs {
     flex-grow: 1;
@@ -379,45 +411,51 @@ watch(activeTab, (newTab) => {
     flex-direction: column;
 }
 
-/* :deep(.el-tabs__content) {
+:deep(.el-tabs__content) {
     flex-grow: 1;
     overflow-y: auto;
-    padding: 20px;
-    background-color: var(--pgr-bg-light);
 }
-
-:deep(.el-tabs__header) {
-    background-color: var(--pgr-bg-lighter);
-    border-bottom: 1px solid var(--pgr-border-color);
-}
-
-:deep(.eltabs__items.is-active) {
-    color: var(--pgr-primary-color);
-}
-
-:deep(.el-tabs__item) {
-    color: var(--pgr-text-regular);
-} */
 
 .empty-state-card {
-    margin: 20px;
     flex-grow: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-    /* color: var(--pgr-text-regular);
-    background-color: var(--pgr-bg);
-    border: 1px solid var(--pgr-border-color); */
 }
 
 .action-buttons {
     display: flex;
+    flex-direction: row;
+    /* 改为行排列 */
     flex-wrap: wrap;
-    gap: 15px;
+    gap: 20px;
     padding: 20px;
+    align-items: flex-start;
+    /* 顶部对齐 */
 }
 
-/* 为多选框添加一些间距，让布局更好看 */
+/* ▼▼▼ 新增样式 ▼▼▼ */
+.action-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.action-label {
+    color: var(--el-text-color-regular);
+    font-size: 14px;
+    margin-bottom: 8px;
+    /* 增加标签和上传框的间距 */
+}
+
+.upload-item {
+    align-items: center;
+    /* 让上传框居中 */
+}
+
+/* ▲▲▲ 新增样式结束 ▲▲▲ */
+
+
 .el-checkbox.is-bordered {
     margin-bottom: 10px;
     margin-right: 10px;

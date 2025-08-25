@@ -17,6 +17,6 @@ export const useThemeStore = defineStore(
   },
   {
     // 开启持久化
-    persist: true,
+    //persist: true,
   }
 )

@@ -34,8 +34,8 @@ const handleMouseMove = (e: MouseEvent) => {
     const deltaY = y - centerY;
 
     // 根据鼠标位置计算旋转角度，这里的 10 是灵敏度系数，可以调整
-    rotateY.value = (deltaX / centerX) * 0.5;
-    rotateX.value = -(deltaY / centerY) * 0.5;
+    rotateY.value = (deltaX / centerX) * 0.2;
+    rotateX.value = -(deltaY / centerY) * 0.2;
 
     // 更新光标位置百分比
     glareX.value = (x / width) * 100;
