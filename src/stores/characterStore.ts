@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import type { ICharacter, ISkill, IConsciousness } from '@/types/character'
+import type { ICharacter, ISkill, IConsciousness, ICharacterSnapshot } from '@/types/character'
 import { v4 as uuidv4 } from 'uuid'
 import { downloadJson } from '@/utils/fileDownloader'
+import { calculateDamage } from '@/utils/damageCalculator'
 
 // 初始状态生成函数
 const createDefaultCharacterState = (): ICharacter => ({
@@ -19,6 +20,7 @@ const createDefaultCharacterState = (): ICharacter => ({
   critDamage: 1.5,
   skills: [],
   recommendedConsciousness: [],
+  snapshots: [],
 })
 
 export const useCharacterStore = defineStore('character', {
@@ -51,12 +53,22 @@ export const useCharacterStore = defineStore('character', {
         this.activeCharacterId = null
       }
 
-      // 2. 如果角色列表不为空，但没有激活的ID，则默认激活第一个
+      // 2. 遍历所有从 localStorage 加载的角色，确保它们符合最新数据结构
+      this.characters.forEach((character) => {
+        // 如果某个旧角色对象上没有 snapshots 属性，则为其添加一个空数组
+        if (!Array.isArray(character.snapshots)) {
+          console.warn(`为角色 "${character.name}" 迁移数据：添加 snapshots 属性。`)
+          character.snapshots = []
+        }
+      })
+      // --- FIX END ---
+
+      // 3. 如果角色列表不为空，但没有激活的ID，则默认激活第一个
       if (this.characters.length > 0 && !this.activeCharacterId) {
         this.activeCharacterId = this.characters[0].id
       }
 
-      // 3. 如果角色列表为空，则创建一个新角色
+      // 4. 如果角色列表为空，则创建一个新角色
       if (this.characters.length === 0) {
         this.addCharacter()
       }
@@ -156,6 +168,55 @@ export const useCharacterStore = defineStore('character', {
     updateRecommendedConsciousness(newSelection: IConsciousness[]) {
       if (this.activeCharacter) {
         this.activeCharacter.recommendedConsciousness = newSelection
+      }
+    },
+
+    /**
+     * 新增：为当前角色拍摄一张配置快照
+     */
+    takeSnapshot() {
+      if (this.activeCharacter) {
+        const damageResult = calculateDamage(this.activeCharacter)
+        const newSnapshot: ICharacterSnapshot = {
+          id: uuidv4(),
+          name: `快照 @ ${new Date().toLocaleString()}`,
+          createdAt: Date.now(),
+          sourceCharacterId: this.activeCharacter.id,
+          coreStats: {
+            baseAttack: this.activeCharacter.baseAttack,
+            critRate: this.activeCharacter.critRate,
+            critDamage: this.activeCharacter.critDamage,
+          },
+          damageResult,
+        }
+        this.activeCharacter.snapshots.push(newSnapshot)
+      }
+    },
+
+    /**
+     * 新增：更新指定快照的名称
+     * @param snapshotId - 快照的ID
+     * @param newName - 新的名称
+     */
+    updateSnapshotName(snapshotId: string, newName: string) {
+      if (this.activeCharacter) {
+        const snapshot = this.activeCharacter.snapshots.find((s) => s.id === snapshotId)
+        if (snapshot) {
+          snapshot.name = newName
+        }
+      }
+    },
+
+    /**
+     * 新增：删除指定快照
+     * @param snapshotId - 快照的ID
+     */
+    deleteSnapshot(snapshotId: string) {
+      if (this.activeCharacter) {
+        const index = this.activeCharacter.snapshots.findIndex((s) => s.id === snapshotId)
+        if (index !== -1) {
+          this.activeCharacter.snapshots.splice(index, 1)
+        }
       }
     },
   },
