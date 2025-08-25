@@ -48,6 +48,39 @@ export interface IConsciousness {
 }
 
 /**
+ * 新增：角色配置快照的数据结构接口
+ */
+export interface ICharacterSnapshot {
+  /** 快照的唯一ID */
+  id: string
+
+  /** 快照的自定义名称 */
+  name: string
+
+  /** 创建快照时的时间戳 */
+  createdAt: number
+
+  /** 关联的角色ID */
+  sourceCharacterId: string
+
+  /** 用于对比的核心数值属性 */
+  coreStats: {
+    baseAttack: number
+    critRate: number
+    critDamage: number
+  }
+
+  /** 伤害计算结果 */
+  damageResult: {
+    totalDamage: number
+    skills: {
+      name: string
+      damage: number
+    }[]
+  }
+}
+
+/**
  * 最终的角色核心数据结构接口
  * 这是我们整个应用中流动的数据的“总蓝图”
  */
@@ -95,4 +128,7 @@ export interface ICharacter {
    * 是一个由 IConsciousness 对象组成的数组
    */
   recommendedConsciousness: IConsciousness[]
+
+  /** 新增：该角色的所有快照集合 */
+  snapshots: ICharacterSnapshot[]
 }
