@@ -3,8 +3,10 @@ import type { ICharacter, ISkill, IConsciousness, ICharacterSnapshot } from '@/t
 import { v4 as uuidv4 } from 'uuid'
 import { downloadJson } from '@/utils/fileDownloader'
 import { calculateDamage } from '@/utils/damageCalculator'
+import { supabase } from '@/lib/supabaseClient'
+import { useAuthStore } from './authStore'
+import { ElMessage } from 'element-plus'
 
-// 初始状态生成函数
 const createDefaultCharacterState = (): ICharacter => ({
   id: uuidv4(),
   name: '新角色',
@@ -14,7 +16,6 @@ const createDefaultCharacterState = (): ICharacter => ({
   class: '进攻型',
   frameType: '泛用',
   damageType: '物理',
-  //新增属性默认值
   baseAttack: 1000,
   critRate: 0.5,
   critDamage: 1.5,
@@ -27,7 +28,7 @@ export const useCharacterStore = defineStore('character', {
   state: () => ({
     characters: [] as ICharacter[],
     activeCharacterId: null as string | null,
-    isLoading: false, //新增一个加载状态
+    isLoading: false,
     activeEditorTab: '基础信息' as string,
   }),
 
@@ -43,52 +44,114 @@ export const useCharacterStore = defineStore('character', {
 
   actions: {
     /**
-     * FIX: 新增一个初始化和数据校验的 action
+     * 从 Supabase 获取属于当前用户的角色列表
      */
-    initializeStore() {
-      // 1. 检查持久化后的数据是否是旧格式 (characters 不是数组)
-      if (!Array.isArray(this.characters)) {
-        console.warn('检测到旧版本状态，将重置角色仓库。')
-        this.characters = []
-        this.activeCharacterId = null
-      }
+    async fetchCharacters() {
+      const authStore = useAuthStore()
+      if (!authStore.user) return
 
-      // 2. 遍历所有从 localStorage 加载的角色，确保它们符合最新数据结构
-      this.characters.forEach((character) => {
-        // 如果某个旧角色对象上没有 snapshots 属性，则为其添加一个空数组
-        if (!Array.isArray(character.snapshots)) {
-          console.warn(`为角色 "${character.name}" 迁移数据：添加 snapshots 属性。`)
-          character.snapshots = []
-        }
-      })
-      // --- FIX END ---
-
-      // 3. 如果角色列表不为空，但没有激活的ID，则默认激活第一个
-      if (this.characters.length > 0 && !this.activeCharacterId) {
-        this.activeCharacterId = this.characters[0].id
-      }
-
-      // 4. 如果角色列表为空，则创建一个新角色
-      if (this.characters.length === 0) {
-        this.addCharacter()
-      }
-    },
-
-    addCharacter() {
-      const newCharacter = createDefaultCharacterState()
-      this.characters.push(newCharacter)
-      this.activeCharacterId = newCharacter.id
-    },
-
-    importCharacter(characterData: ICharacter) {
       this.isLoading = true
-      //避免导入重复id
-      if (this.characters.some((c) => c.id === characterData.id)) {
-        characterData.id = uuidv4()
+      try {
+        const { data, error } = await supabase
+          .from('characters')
+          .select('character_data')
+          .eq('user_id', authStore.user.id)
+
+        if (error) throw error
+
+        // Supabase 返回的是 { character_data: ICharacter }[]
+        // 我们需要解构并转换回 ICharacter[]
+        this.characters = data.map((item: { character_data: ICharacter }) => item.character_data)
+
+        // 如果列表不为空，但没有激活ID，则默认激活第一个
+        if (this.characters.length > 0 && !this.activeCharacterId) {
+          this.activeCharacterId = this.characters[0].id
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error('获取角色数据失败:', error)
+          ElMessage.error(`获取角色数据失败: ${error.message}`)
+        } else {
+          console.error('获取角色数据失败:', error)
+          ElMessage.error('获取角色数据失败: 未知错误')
+        }
+      } finally {
+        this.isLoading = false
       }
-      this.characters.push(characterData)
-      this.activeCharacterId = characterData.id
-      this.isLoading = false
+    },
+
+    /**
+     * 新增角色，并将其保存到 Supabase
+     */
+    async addCharacter() {
+      const authStore = useAuthStore()
+      if (!authStore.user) return
+
+      this.isLoading = true
+      const newCharacter = createDefaultCharacterState()
+
+      try {
+        const { error } = await supabase.from('characters').insert({
+          id: newCharacter.id, // 将角色ID作为表的主键
+          user_id: authStore.user.id,
+          character_data: newCharacter,
+        })
+        if (error) throw error
+
+        this.characters.push(newCharacter)
+        this.activeCharacterId = newCharacter.id
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error('新增角色失败:', error)
+          ElMessage.error(`新增角色失败: ${error.message}`)
+        } else {
+          console.error('新增角色失败:', error)
+          ElMessage.error(`新增角色失败: 未知错误`)
+        }
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * 删除角色，并从 Supabase 中删除
+     */
+    async deleteCharacter(characterId: string) {
+      this.isLoading = true
+      try {
+        const { error } = await supabase.from('characters').delete().eq('id', characterId)
+
+        if (error) throw error
+
+        const index = this.characters.findIndex((c) => c.id === characterId)
+        if (index !== -1) {
+          this.characters.splice(index, 1)
+          if (this.activeCharacterId === characterId) {
+            this.activeCharacterId = this.characters.length > 0 ? this.characters[0].id : null
+          }
+        }
+      } catch (error) {
+        console.error('删除角色失败:', error)
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * 统一的更新方法，用于将当前激活角色的最新状态同步到 Supabase
+     */
+    async _updateActiveCharacterInDb() {
+      if (!this.activeCharacter) return
+
+      try {
+        const { error } = await supabase
+          .from('characters')
+          .update({ character_data: this.activeCharacter })
+          .eq('id', this.activeCharacter.id)
+        if (error) throw error
+      } catch (error) {
+        console.error('更新角色失败:', error)
+      }
     },
 
     setActiveCharacter(characterId: string) {
@@ -99,33 +162,12 @@ export const useCharacterStore = defineStore('character', {
       }, 300)
     },
 
-    deleteCharacter(characterId: string) {
-      this.isLoading = true
-      const index = this.characters.findIndex((c) => c.id === characterId)
-      if (index !== -1) {
-        this.characters.splice(index, 1)
-        if (this.activeCharacterId === characterId) {
-          this.activeCharacterId = this.characters.length > 0 ? this.characters[0].id : null
-        }
-      }
-      this.isLoading = false
-    },
+    // ... 其他 actions ...
 
-    // 新增：导出当前角色配置
-    exportActiveCharacter() {
-      if (!this.activeCharacter) return
-      const filename = `${this.activeCharacter.name || '未命名角色'}.json`
-      downloadJson(this.activeCharacter, filename)
-    },
-
-    // 新增：导出所有角色配置
-    exportAllCharacters() {
-      if (this.characters.length === 0) return
-      downloadJson(this.characters, 'all_characters.json')
-    },
     updateCharacterInfo<K extends keyof ICharacter>(field: K, value: ICharacter[K]) {
       if (this.activeCharacter) {
         this.activeCharacter[field] = value
+        this._updateActiveCharacterInDb() // 调用更新
       }
     },
 
@@ -136,6 +178,7 @@ export const useCharacterStore = defineStore('character', {
           const oldId = this.activeCharacterId
           this.characters[index] = createDefaultCharacterState()
           this.characters[index].id = oldId!
+          this._updateActiveCharacterInDb() // 调用更新
         }
       }
     },
@@ -150,32 +193,35 @@ export const useCharacterStore = defineStore('character', {
           multiplier: 1,
           damageTag: '普攻',
         })
+        this._updateActiveCharacterInDb() // 调用更新
       }
     },
 
     removeSkill(index: number) {
       if (this.activeCharacter) {
         this.activeCharacter.skills.splice(index, 1)
+        this._updateActiveCharacterInDb() // 调用更新
       }
     },
 
     updateSkillField<K extends keyof ISkill>(skillIndex: number, field: K, value: ISkill[K]) {
       if (this.activeCharacter && this.activeCharacter.skills[skillIndex]) {
         this.activeCharacter.skills[skillIndex][field] = value
+        this._updateActiveCharacterInDb() // 调用更新
       }
     },
 
     updateRecommendedConsciousness(newSelection: IConsciousness[]) {
       if (this.activeCharacter) {
         this.activeCharacter.recommendedConsciousness = newSelection
+        this._updateActiveCharacterInDb() // 调用更新
       }
     },
 
-    /**
-     * 新增：为当前角色拍摄一张配置快照
-     */
+    // 快照相关功能也需要调用更新
     takeSnapshot() {
       if (this.activeCharacter) {
+        // ... (快照逻辑不变)
         const damageResult = calculateDamage(this.activeCharacter)
         const newSnapshot: ICharacterSnapshot = {
           id: uuidv4(),
@@ -190,35 +236,53 @@ export const useCharacterStore = defineStore('character', {
           damageResult,
         }
         this.activeCharacter.snapshots.push(newSnapshot)
+        this._updateActiveCharacterInDb() // 调用更新
       }
     },
 
-    /**
-     * 新增：更新指定快照的名称
-     * @param snapshotId - 快照的ID
-     * @param newName - 新的名称
-     */
     updateSnapshotName(snapshotId: string, newName: string) {
       if (this.activeCharacter) {
         const snapshot = this.activeCharacter.snapshots.find((s) => s.id === snapshotId)
         if (snapshot) {
           snapshot.name = newName
+          this._updateActiveCharacterInDb() // 调用更新
         }
       }
     },
 
-    /**
-     * 新增：删除指定快照
-     * @param snapshotId - 快照的ID
-     */
     deleteSnapshot(snapshotId: string) {
       if (this.activeCharacter) {
         const index = this.activeCharacter.snapshots.findIndex((s) => s.id === snapshotId)
         if (index !== -1) {
           this.activeCharacter.snapshots.splice(index, 1)
+          this._updateActiveCharacterInDb() // 调用更新
         }
       }
     },
+
+    // 导入导出功能暂不修改，它们仍作为本地文件操作
+    exportActiveCharacter() {
+      if (!this.activeCharacter) return
+      const filename = `${this.activeCharacter.name || '未命名角色'}.json`
+      downloadJson(this.activeCharacter, filename)
+    },
+    exportAllCharacters() {
+      if (this.characters.length === 0) return
+      downloadJson(this.characters, 'all_characters.json')
+    },
+    importCharacter(characterData: ICharacter) {
+      // 导入功能现在是新增一个角色
+      this.addCharacter().then(() => {
+        // 在新增完成后，用导入的数据覆盖
+        const newCharId = this.activeCharacterId
+        const index = this.characters.findIndex((c) => c.id === newCharId)
+        if (index !== -1) {
+          const imported = { ...characterData, id: newCharId! }
+          this.characters[index] = imported
+          this._updateActiveCharacterInDb()
+        }
+      })
+    },
   },
-  persist: true,
+  // 移除 persist: true
 })
