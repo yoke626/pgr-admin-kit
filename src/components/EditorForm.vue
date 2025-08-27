@@ -3,19 +3,51 @@ import DamageCalculator from './DamageCalculator.vue'
 import { computed, ref, watch, nextTick } from 'vue'
 import { useCharacterStore } from '@/stores/characterStore'
 import { QUALITY_OPTIONS, CLASS_OPTIONS, FRAME_TYPE_OPTIONS, DAMAGE_TYPE_OPTIONS } from '@/constants/characterOptions'
-import SkillFormItem from './SkillFormItem.vue';  // 1. 导入子组件
-import type { ISkill } from '@/types/character';
+import SkillFormItem from './SkillFormItem.vue';
+import ConsciousnessItem from './ConsciousnessItem.vue'; // 引入组件
+import type { ISkill, ICharacter } from '@/types/character';
 import { storeToRefs } from 'pinia';
 import { ALL_CONSCIOUSNESS } from '@/database/consciousnessData';
 import type { FormInstance, FormRules, UploadProps } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus } from '@element-plus/icons-vue';
+import { Plus, Upload, Download, Delete, Search } from '@element-plus/icons-vue'; // 引入Search icon
+import { readJson } from '@/utils/fileReader';
+import draggable from 'vuedraggable';
 
 const characterStore = useCharacterStore()
 
 // 使用 activeCharacter getter
 const { activeCharacter } = storeToRefs(characterStore);
 const editorFormRef = ref<FormInstance>();
+
+// --- 新增：为意识筛选器创建响应式变量 ---
+const consciousnessFilter = ref('');
+
+// --- 新增：创建计算属性以根据筛选文本过滤意识列表 ---
+const filteredConsciousness = computed(() => {
+    if (!consciousnessFilter.value) {
+        return ALL_CONSCIOUSNESS;
+    }
+    return ALL_CONSCIOUSNESS.filter(c =>
+        c.name.toLowerCase().includes(consciousnessFilter.value.toLowerCase()) ||
+        c.description.toLowerCase().includes(consciousnessFilter.value.toLowerCase())
+    );
+});
+
+// 1. 新增用于格式化时间戳的计算属性
+const createdAtFormatted = computed(() => {
+    if (activeCharacter.value?.createdAt) {
+        return new Date(activeCharacter.value.createdAt).toLocaleString();
+    }
+    return '暂无记录';
+});
+
+const updatedAtFormatted = computed(() => {
+    if (activeCharacter.value?.updatedAt) {
+        return new Date(activeCharacter.value.updatedAt).toLocaleString();
+    }
+    return '暂无记录';
+});
 
 const name = computed({
     get: () => activeCharacter.value?.name ?? '',
@@ -53,9 +85,7 @@ const baseAttack = computed({
 })
 
 const critRate = computed({
-    // 从 store 读取时，乘以 100 变成百分比显示在输入框
     get: () => (activeCharacter.value?.critRate ?? 0) * 100,
-    // 写入 store 时，除以 100 转换为小数保存
     set: (val) => characterStore.updateCharacterInfo('critRate', val / 100),
 })
 
@@ -63,8 +93,6 @@ const critDamage = computed({
     get: () => (activeCharacter.value?.critDamage ?? 0) * 100,
     set: (val) => characterStore.updateCharacterInfo('critDamage', val / 100),
 })
-
-
 const selectedConsciousnessIds = computed({
     get: () => activeCharacter.value?.recommendedConsciousness.map((c) => c.id) ?? [],
     set: (newIds) => {
@@ -72,7 +100,6 @@ const selectedConsciousnessIds = computed({
         characterStore.updateRecommendedConsciousness(newSelection);
     },
 });
-
 const formRules = ref<FormRules>({
     name: [
         { required: true, message: '角色名称不能为空', trigger: 'blur' },
@@ -93,7 +120,19 @@ function handleRemoveSkill(index: number) {
     characterStore.removeSkill(index);
 }
 
-// ▼▼▼ 新增：重置表单的方法 ▼▼▼
+// --- 新增：处理意识卡片点击事件的函数 ---
+function handleToggleConsciousness(id: number) {
+    const currentIds = [...selectedConsciousnessIds.value];
+    const index = currentIds.indexOf(id);
+    if (index > -1) {
+        currentIds.splice(index, 1); // 如果已存在，则移除
+    } else {
+        currentIds.push(id); // 如果不存在，则添加
+    }
+    selectedConsciousnessIds.value = currentIds; // 触发 setter
+}
+
+
 async function handleReset() {
     try {
         await ElMessageBox.confirm(
@@ -105,7 +144,6 @@ async function handleReset() {
                 type: 'warning',
             }
         )
-        // 如果用户确认，则调用 store 中的 action
         characterStore.resetCharacterState()
         ElMessage({ type: 'success', message: '表单已重置' })
     } catch (error) {
@@ -113,7 +151,6 @@ async function handleReset() {
     }
 }
 
-// 5. 新增一个手动触发全表单校验的方法
 async function handleValidate() {
     if (!editorFormRef.value) return
     await editorFormRef.value.validate((valid, fields) => {
@@ -126,25 +163,16 @@ async function handleValidate() {
     })
 }
 
-// ▼▼▼ 核心修改：用 computed 属性替换 local ref ▼▼▼
 const activeTab = computed({
     get: () => characterStore.activeEditorTab,
     set: (val) => (characterStore.activeEditorTab = val),
 });
 
-// 1. 创建一个 ref 来引用 DamageCalculator 组件实例
 const damageCalculatorRef = ref<InstanceType<typeof DamageCalculator> | null>(null);
 
-// 2. 创建一个 ref 来绑定 el-tabs 的 v-model，追踪当前激活的标签页
-//const activeTab = ref('基础信息');
-
-// 3. 监听 activeTab 的变化
 watch(activeTab, (newTab) => {
-    // 当新激活的标签页是'数据看板'，并且子组件已经加载时
     if (newTab === '数据看板' && damageCalculatorRef.value) {
-        // 使用 nextTick 确保 DOM 已经完全可见
         nextTick(() => {
-            // 调用子组件暴露出的 handleResize 方法
             damageCalculatorRef.value?.resizeChart();
         });
     }
@@ -170,6 +198,41 @@ const beforeAvatarUpload: UploadProps['beforeUpload'] = (rawFile) => {
     };
     return false;
 };
+
+async function handleImportJson() {
+    try {
+        const characterData = await readJson<ICharacter>()
+        if (characterData && characterData.name && characterData.id) {
+            characterStore.importCharacter(characterData)
+            ElMessage({ type: 'success', message: `角色'${characterData.name}'已成功导入为一个新角色!` })
+        } else {
+            ElMessage({ type: 'error', message: 'JSON文件格式不正确' })
+        }
+    } catch (error) {
+        ElMessage({ type: 'error', message: `导入失败: ${error}` })
+    }
+}
+
+async function handleDeleteCharacter() {
+    if (!activeCharacter.value) return;
+
+    try {
+        await ElMessageBox.confirm(
+            `此操作将永久删除角色 "${activeCharacter.value.name}"，请谨慎操作。`,
+            '删除确认',
+            {
+                confirmButtonText: '确定删除',
+                cancelButtonText: '取消',
+                type: 'warning',
+            }
+        );
+        await characterStore.deleteCharacter(activeCharacter.value.id);
+        ElMessage({ type: 'success', message: `角色 "${activeCharacter.value.name}" 已删除` });
+    } catch (error) {
+        ElMessage({ type: 'info', message: '已取消删除' });
+    }
+}
+
 </script>
 
 <template>
@@ -236,135 +299,99 @@ const beforeAvatarUpload: UploadProps['beforeUpload'] = (rawFile) => {
                     </el-button>
                 </el-tab-pane>
                 <el-tab-pane label="意识搭配">
-                    <el-checkbox-group v-model="selectedConsciousnessIds">
-                        <el-checkbox v-for="consciousness in ALL_CONSCIOUSNESS" :key="consciousness.id"
-                            :label="consciousness.id" border>
-                            {{ consciousness.name }}
-                        </el-checkbox>
-                    </el-checkbox-group>
+                    <div class="consciousness-selector">
+                        <el-input v-model="consciousnessFilter" placeholder="输入关键词筛选意识..." class="filter-input"
+                            :prefix-icon="Search" clearable />
+
+                        <div class="consciousness-grid">
+                            <ConsciousnessItem v-for="consciousness in filteredConsciousness" :key="consciousness.id"
+                                :consciousness="consciousness"
+                                :is-selected="selectedConsciousnessIds.includes(consciousness.id)"
+                                @toggle-selection="handleToggleConsciousness" />
+                        </div>
+                    </div>
                 </el-tab-pane>
                 <el-tab-pane label="数据看板" name="数据看板" lazy>
                     <DamageCalculator ref="damageCalculatorRef" :character="activeCharacter" />
                 </el-tab-pane>
                 <el-tab-pane label="操作">
-                    <div class="action-buttons">
-                        <div class="action-item">
-                            <el-button @click="handleValidate">
-                                校验表单
-                            </el-button>
-                        </div>
-                        <div class="action-item">
-                            <el-button type="danger" plain @click="handleReset">
-                                重置表单
-                            </el-button>
-                        </div>
+                    <div class="action-panel">
+                        <el-card header="文件操作">
+                            <div class="action-buttons">
+                                <div class="action-item">
+                                    <el-button :icon="Upload" @click="handleImportJson">导入角色文件</el-button>
+                                </div>
+                                <div class="action-item">
+                                    <el-button :icon="Download"
+                                        @click="characterStore.exportActiveCharacter">导出当前角色</el-button>
+                                </div>
+                                <div class="action-item">
+                                    <el-button :icon="Download"
+                                        @click="characterStore.exportAllCharacters">导出全部角色</el-button>
+                                </div>
+                            </div>
+                        </el-card>
 
-                        <div class="action-item upload-item">
-                            <span class="action-label">角色立绘</span>
-                            <el-upload class="avatar-uploader" action="#" :show-file-list="false"
-                                :before-upload="beforeAvatarUpload">
-                                <el-image v-if="activeCharacter.avatar" :src="activeCharacter.avatar" class="avatar"
-                                    fit="cover" />
-                                <el-icon v-else class="avatar-uploader-icon">
-                                    <Plus />
-                                </el-icon>
-                            </el-upload>
-                        </div>
+                        <el-card header="常规操作" style="margin-top: 20px;">
+                            <div class="action-buttons">
+                                <div class="action-item">
+                                    <el-button @click="handleValidate">校验表单</el-button>
+                                </div>
+                                <div class="action-item upload-item">
+                                    <span class="action-label">角色立绘</span>
+                                    <el-upload class="avatar-uploader" action="#" :show-file-list="false"
+                                        :before-upload="beforeAvatarUpload">
+                                        <el-image v-if="activeCharacter.avatar" :src="activeCharacter.avatar"
+                                            class="avatar" fit="cover" />
+                                        <el-icon v-else class="avatar-uploader-icon">
+                                            <Plus />
+                                        </el-icon>
+                                    </el-upload>
+                                </div>
+                            </div>
+                        </el-card>
+
+                        <el-card header="元数据" style="margin-top: 20px;">
+                            <el-descriptions :column="1" border>
+                                <el-descriptions-item label="创建时间">
+                                    {{ createdAtFormatted }}
+                                </el-descriptions-item>
+                                <el-descriptions-item label="最后更新">
+                                    {{ updatedAtFormatted }}
+                                </el-descriptions-item>
+                            </el-descriptions>
+                        </el-card>
+                        <el-card header="操作日志" style="margin-top: 20px;">
+                            <div class="log-container">
+                                <el-empty v-if="!activeCharacter.log || activeCharacter.log.length === 0"
+                                    description="暂无日志记录" />
+                                <ul v-else class="log-list">
+                                    <li v-for="(entry, index) in activeCharacter.log" :key="index" class="log-item">
+                                        {{ entry }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </el-card>
+                        <el-card class="danger-zone" style="margin-top: 20px;">
+                            <template #header>
+                                <div class="card-header">
+                                    <span>危险区域</span>
+                                </div>
+                            </template>
+                            <div class="action-buttons">
+                                <div class="action-item">
+                                    <el-button type="danger" plain @click="handleReset">重置表单</el-button>
+                                </div>
+                                <div class="action-item">
+                                    <el-button type="danger" :icon="Delete"
+                                        @click="handleDeleteCharacter">删除当前角色</el-button>
+                                </div>
+                            </div>
+                        </el-card>
                     </div>
                 </el-tab-pane>
             </el-tabs>
         </template>
-        <!-- 角色基础信息 -->
-        <!-- <el-card shadow="never">
-                <template #header>
-                    <div class="card-header">
-                        <span>角色基础信息</span>
-                    </div>
-                </template>
-
-<el-form ref="editorFormRef" :model="activeCharacter" :rules="formRules" label-width="100px">
-    <el-form-item label="角色名称" prop="name">
-        <el-input v-model="name" placeholder="请输入角色中文名" />
-    </el-form-item>
-    <el-form-item label="角色型号" prop="codename">
-        <el-input v-model="codename" placeholder="请输入角色型号/代号" />
-    </el-form-item>
-    <el-form-item label="初始品质">
-        <el-select v-model="quality" placeholder="请选择">
-            <el-option v-for="item in QUALITY_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-    </el-form-item>
-    <el-form-item label="职业定位">
-        <el-select v-model="charClass" placeholder="请选择">
-            <el-option v-for="item in CLASS_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-    </el-form-item>
-    <el-form-item label="机体框架">
-        <el-select v-model="frameType" placeholder="请选择">
-            <el-option v-for="item in FRAME_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-    </el-form-item>
-    <el-form-item label="伤害类型">
-        <el-select v-model="damageType" placeholder="请选择">
-            <el-option v-for="item in DAMAGE_TYPE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-    </el-form-item>
-</el-form>
-</el-card> -->
-        <!-- 技能列表 -->
-        <!-- <el-card shadow="never" style="margin-top: 20px;">
-                <template #header>
-                    <div class="card-header">
-                        <span>技能配置</span>
-                    </div>
-                </template>
-
-                <SkillFormItem v-for="(skill, index) in activeCharacter.skills" :key="index" :skill="skill"
-                    :index="index" @update:skill="handleUpdateSkill" @remove="handleRemoveSkill" />
-
-                <el-button type="primary" style="width: 100%;" plain @click="characterStore.addSkill">
-                    添加新技能
-                </el-button>
-            </el-card> -->
-        <!-- 意识搭配 -->
-        <!-- <el-card shadow="never" style="margin-top: 20px;">
-                <template #header>
-                    <div class="card-header">
-                        <span>推荐意识搭配</span>
-                    </div>
-                </template>
-                <el-checkbox-group v-model="selectedConsciousnessIds">
-                    <el-checkbox v-for="consciousness in ALL_CONSCIOUSNESS" :key="consciousness.id"
-                        :label="consciousness.id" border>
-                        {{ consciousness.name }}
-                    </el-checkbox>
-                </el-checkbox-group>
-            </el-card> -->
-        <!--操作-->
-        <!-- <el-card shadow="never" style="margin-top: 20px;">
-                <template #header>
-                    <div class="card-header">
-                        <span>操作</span>
-                    </div>
-                </template>
-                <el-button type="success" @click="handleExportJson">
-                    导出 JSON 文件
-                </el-button>
-                <el-button type="primary" plain @click="handleImportJson">
-                    导入 JSON 文件
-                </el-button>
-                <el-button @click="handleValidate">
-                    校验表单
-                </el-button>
-                <el-button type="danger" plain @click="handleReset">
-                    重置表单
-                </el-button>
-            </el-card> -->
-        <!-- </template> -->
-        <!-- <el-card v-else shadow="never" class="empty-state-card">
-            <p>当前没有正在编辑的角色。</p>
-            <el-button type="primary" @click="characterStore.addCharacter">新建一个角色</el-button>
-        </el-card> -->
         <el-card v-else shadow="never" class="empty-state-card">
             <p>从左侧列表选择或新建一个角色，开始你的配置吧！</p>
         </el-card>
@@ -372,6 +399,24 @@ const beforeAvatarUpload: UploadProps['beforeUpload'] = (rawFile) => {
 </template>
 
 <style scoped>
+/* --- 新增/修改：意识搭配页样式 --- */
+.consciousness-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.filter-input {
+    max-width: 400px;
+}
+
+.consciousness-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+}
+
+/* --- 原有样式 --- */
 .avatar-uploader .avatar {
     width: 128px;
     height: 128px;
@@ -423,41 +468,38 @@ const beforeAvatarUpload: UploadProps['beforeUpload'] = (rawFile) => {
     align-items: center;
 }
 
-.action-buttons {
-    display: flex;
-    flex-direction: row;
-    /* 改为行排列 */
-    flex-wrap: wrap;
-    gap: 20px;
-    padding: 20px;
-    align-items: flex-start;
-    /* 顶部对齐 */
+.action-label {
+    color: var(--el-text-color-regular);
+    font-size: 14px;
+    margin-bottom: 8px;
 }
 
-/* ▼▼▼ 新增样式 ▼▼▼ */
+.action-panel {
+    padding: 10px;
+}
+
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
 .action-item {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.action-label {
-    color: var(--el-text-color-regular);
-    font-size: 14px;
-    margin-bottom: 8px;
-    /* 增加标签和上传框的间距 */
-}
-
 .upload-item {
     align-items: center;
-    /* 让上传框居中 */
 }
 
-/* ▲▲▲ 新增样式结束 ▲▲▲ */
+.danger-zone {
+    border-color: var(--el-color-danger);
+}
 
-
-.el-checkbox.is-bordered {
-    margin-bottom: 10px;
-    margin-right: 10px;
+.danger-zone :deep(.el-card__header) {
+    color: var(--el-color-danger);
+    font-weight: bold;
 }
 </style>

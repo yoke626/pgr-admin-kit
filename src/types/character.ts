@@ -45,6 +45,15 @@ export interface IConsciousness {
 
   /** 意识的名称，如：芭斯隆、列文虎克 */
   name: string
+
+  /** 意识图标的URL或本地路径 */
+  icon: string
+
+  /** 意识效果的详细描述 */
+  description: string
+
+  /** 意识可出现的位置，如：[1, 2, 3, 4, 5, 6] */
+  positions: number[]
 }
 
 /**
@@ -109,7 +118,7 @@ export interface ICharacter {
    */
   frameType: '泛用' | '独域' | '联动'
 
-  /** 伤害属性类型 */
+  /** 傷害屬性類型 */
   damageType: '火' | '雷' | '暗' | '冰' | '物理' | '混合' | '空'
 
   /** 新增：基础攻击力 */
@@ -131,4 +140,13 @@ export interface ICharacter {
 
   /** 新增：该角色的所有快照集合 */
   snapshots: ICharacterSnapshot[]
+
+  /** 新增：创建时间戳 */
+  createdAt?: number
+
+  /** 新增：最后更新时间戳 */
+  updatedAt?: number
+
+  /** 新增：操作日志 */
+  log?: string[]
 }

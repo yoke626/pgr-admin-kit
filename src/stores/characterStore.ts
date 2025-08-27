@@ -22,6 +22,9 @@ const createDefaultCharacterState = (): ICharacter => ({
   skills: [],
   recommendedConsciousness: [],
   snapshots: [],
+  createdAt: Date.now(), // 1. 新增：记录创建时间
+  updatedAt: Date.now(), // 2. 新增：记录更新时间
+  log: [`[${new Date().toLocaleString()}] 创建了新角色。`], // 1. 初始化日志
 })
 
 export const useCharacterStore = defineStore('character', {
@@ -43,6 +46,24 @@ export const useCharacterStore = defineStore('character', {
   },
 
   actions: {
+    /**
+     * 新增：统一的日志记录方法
+     */
+    _addLog(message: string) {
+      if (this.activeCharacter) {
+        if (!this.activeCharacter.log) {
+          this.activeCharacter.log = []
+        }
+        const logEntry = `[${new Date().toLocaleString()}] ${message}`
+        this.activeCharacter.log.unshift(logEntry) // unshift 将最新日志放在最前面
+
+        // 可选：保持日志数组大小，防止无限增长
+        if (this.activeCharacter.log.length > 50) {
+          this.activeCharacter.log.pop()
+        }
+      }
+    },
+
     /**
      * 从 Supabase 获取属于当前用户的角色列表
      */
@@ -88,11 +109,12 @@ export const useCharacterStore = defineStore('character', {
       if (!authStore.user) return
 
       this.isLoading = true
+      // createDefaultCharacterState 已经包含了时间戳
       const newCharacter = createDefaultCharacterState()
 
       try {
         const { error } = await supabase.from('characters').insert({
-          id: newCharacter.id, // 将角色ID作为表的主键
+          id: newCharacter.id,
           user_id: authStore.user.id,
           character_data: newCharacter,
         })
@@ -114,26 +136,40 @@ export const useCharacterStore = defineStore('character', {
     },
 
     /**
-     * 删除角色，并从 Supabase 中删除
+     * 删除角色，并从 Supabase 中删除 (采用乐观更新策略)
      */
     async deleteCharacter(characterId: string) {
-      this.isLoading = true
+      // 1. 找到要删除的角色和其索引
+      const index = this.characters.findIndex((c) => c.id === characterId)
+      if (index === -1) return
+      const characterToDelete = { ...this.characters[index] }
+
+      // 2. 立即从本地状态中删除该角色 (乐观更新UI)
+      this.characters.splice(index, 1)
+
+      // 3. 如果删除的是当前激活的角色，则切换到另一个角色
+      if (this.activeCharacterId === characterId) {
+        this.activeCharacterId =
+          this.characters.length > 0
+            ? this.characters[Math.max(0, index - 1)].id // 尝试激活上一个
+            : null
+      }
+
       try {
+        // 4. 发送异步请求到数据库
         const { error } = await supabase.from('characters').delete().eq('id', characterId)
-
-        if (error) throw error
-
-        const index = this.characters.findIndex((c) => c.id === characterId)
-        if (index !== -1) {
-          this.characters.splice(index, 1)
-          if (this.activeCharacterId === characterId) {
-            this.activeCharacterId = this.characters.length > 0 ? this.characters[0].id : null
-          }
+        if (error) {
+          // 如果数据库操作失败，则抛出错误
+          throw error
         }
+        // 如果成功，则无需任何操作，UI已经更新
       } catch (error) {
         console.error('删除角色失败:', error)
-      } finally {
-        this.isLoading = false
+        ElMessage.error('删除角色失败，已撤销操作')
+        // 5. 如果请求失败，则将角色恢复到原来的位置
+        this.characters.splice(index, 0, characterToDelete)
+        // 恢复可能改变的 activeCharacterId
+        this.activeCharacterId = characterId
       }
     },
 
@@ -142,6 +178,9 @@ export const useCharacterStore = defineStore('character', {
      */
     async _updateActiveCharacterInDb() {
       if (!this.activeCharacter) return
+
+      // 3. 核心修改：在更新前，设置最新的更新时间
+      this.activeCharacter.updatedAt = Date.now()
 
       try {
         const { error } = await supabase
@@ -173,12 +212,18 @@ export const useCharacterStore = defineStore('character', {
 
     resetCharacterState() {
       if (this.activeCharacter) {
+        this._addLog('执行了重置表单操作。') // 2. 记录重置日志
         const index = this.characters.findIndex((c) => c.id === this.activeCharacterId)
         if (index !== -1) {
           const oldId = this.activeCharacterId
+          const oldCreatedAt = this.activeCharacter.createdAt
+          const oldLog = this.activeCharacter.log
+
           this.characters[index] = createDefaultCharacterState()
           this.characters[index].id = oldId!
-          this._updateActiveCharacterInDb() // 调用更新
+          this.characters[index].createdAt = oldCreatedAt
+          this.characters[index].log = oldLog // 保留历史日志
+          this._updateActiveCharacterInDb()
         }
       }
     },
@@ -221,11 +266,12 @@ export const useCharacterStore = defineStore('character', {
     // 快照相关功能也需要调用更新
     takeSnapshot() {
       if (this.activeCharacter) {
-        // ... (快照逻辑不变)
+        const snapshotName = `快照 @ ${new Date().toLocaleString()}`
+        this._addLog(`拍摄了新的配置快照：${snapshotName}`) // 3. 记录快照日志
         const damageResult = calculateDamage(this.activeCharacter)
         const newSnapshot: ICharacterSnapshot = {
           id: uuidv4(),
-          name: `快照 @ ${new Date().toLocaleString()}`,
+          name: snapshotName,
           createdAt: Date.now(),
           sourceCharacterId: this.activeCharacter.id,
           coreStats: {
@@ -236,7 +282,7 @@ export const useCharacterStore = defineStore('character', {
           damageResult,
         }
         this.activeCharacter.snapshots.push(newSnapshot)
-        this._updateActiveCharacterInDb() // 调用更新
+        this._updateActiveCharacterInDb()
       }
     },
 
@@ -271,13 +317,17 @@ export const useCharacterStore = defineStore('character', {
       downloadJson(this.characters, 'all_characters.json')
     },
     importCharacter(characterData: ICharacter) {
-      // 导入功能现在是新增一个角色
       this.addCharacter().then(() => {
-        // 在新增完成后，用导入的数据覆盖
         const newCharId = this.activeCharacterId
         const index = this.characters.findIndex((c) => c.id === newCharId)
         if (index !== -1) {
-          const imported = { ...characterData, id: newCharId! }
+          const imported = {
+            ...characterData,
+            id: newCharId!,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            log: [`[${new Date().toLocaleString()}] 从JSON文件导入角色'${characterData.name}'。`], // 4. 记录导入日志
+          }
           this.characters[index] = imported
           this._updateActiveCharacterInDb()
         }
