@@ -9,6 +9,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     CharacterList: typeof import('./src/components/CharacterList.vue')['default']
+    ConsciousnessItem: typeof import('./src/components/ConsciousnessItem.vue')['default']
     DamageCalculator: typeof import('./src/components/DamageCalculator.vue')['default']
     EditorForm: typeof import('./src/components/EditorForm.vue')['default']
     ElAside: typeof import('element-plus/es')['ElAside']

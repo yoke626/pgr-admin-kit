@@ -6,6 +6,8 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 const characterStore = useCharacterStore()
 const { activeCharacter } = storeToRefs(characterStore)
 
+
+
 // 1. 创建模板引用来获取卡片DOM元素
 const cardWrapper = ref<HTMLElement | null>(null);
 const card = ref<HTMLElement | null>(null);
@@ -113,6 +115,7 @@ const skillTagType = (type: string) => {
                             </div>
                             <p class="skill-description">{{ skill.description }}</p>
                         </div>
+
 
                         <el-divider>推荐意识</el-divider>
                         <div v-if="activeCharacter.recommendedConsciousness.length === 0" class="empty-skills">

@@ -2,10 +2,8 @@
 import { onMounted, ref, watch } from 'vue';
 import { useCharacterStore } from '@/stores/characterStore';
 import CharacterList from './components/CharacterList.vue';
-import { QuestionFilled, Download, Upload, Link, Moon, Sunny, ArrowDown, Right } from '@element-plus/icons-vue'
-import { readJson } from './utils/fileReader'
+import { QuestionFilled, Link, Moon, Sunny, ArrowDown, Right } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import type { ICharacter } from './types/character'
 import { useThemeStore } from './stores/themeStore';
 import { useAuthStore } from './stores/authStore';
 import { storeToRefs } from 'pinia';
@@ -36,20 +34,6 @@ watch(isLoggedIn, (newVal) => {
 });
 
 const helpDialogVisible = ref(false);
-
-async function handleImportJson() {
-  try {
-    const characterData = await readJson<ICharacter>()
-    if (characterData && characterData.name && characterData.id) {
-      characterStore.importCharacter(characterData)
-      ElMessage({ type: 'success', message: `角色'${characterData.name}'已成功导入为一个新角色!` })
-    } else {
-      ElMessage({ type: 'error', message: 'JSON文件格式不正确' })
-    }
-  } catch (error) {
-    ElMessage({ type: 'error', message: `导入失败: ${error}` })
-  }
-}
 
 const handleLogout = async () => {
   try {
@@ -84,20 +68,6 @@ const handleLogout = async () => {
               <span class="sub-title">| 角色配置中台</span>
             </div>
             <div class="header-right">
-              <el-dropdown>
-                <el-button type="primary">
-                  导入/导出<el-icon class="el-icon--right"><arrow-down /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item :icon="Upload" @click="handleImportJson">导入角色文件</el-dropdown-item>
-                    <el-dropdown-item :icon="Download"
-                      @click="characterStore.exportActiveCharacter">导出当前角色</el-dropdown-item>
-                    <el-dropdown-item :icon="Download"
-                      @click="characterStore.exportAllCharacters">导出全部角色</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
 
               <el-button :icon="QuestionFilled" circle @click="helpDialogVisible = true" />
               <el-button :icon="themeStore.isDark ? Moon : Sunny" circle @click="themeStore.toggleTheme()" />
