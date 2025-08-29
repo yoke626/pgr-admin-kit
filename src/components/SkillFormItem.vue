@@ -68,6 +68,13 @@ async function handleRemove() {
 
 <template>
     <div class="skill-form-item">
+        <div class="drag-handle">
+            <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
+                <path fill="currentColor"
+                    d="M160 256H96a32 32 0 0 1 0-64h64a32 32 0 0 1 0 64zm0 256H96a32 32 0 0 1 0-64h64a32 32 0 0 1 0 64zm0 256H96a32 32 0 0 1 0-64h64a32 32 0 0 1 0 64zm192-512h-64a32 32 0 0 1 0-64h64a32 32 0 0 1 0 64zm0 256h-64a32 32 0 0 1 0-64h64a32 32 0 0 1 0 64zm0 256h-64a32 32 0 0 1 0-64h64a32 32 0 0 1 0 64zm192-512h-64a32 32 0 0 1 0-64h64a32 32 0 0 1 0 64zm0 256h-64a32 32 0 0 1 0-64h64a32 32 0 0 1 0 64zm0 256h-64a32 32 0 0 1 0-64h64a32 32 0 0 1 0 64z">
+                </path>
+            </svg>
+        </div>
         <el-form label-width="80px" label-position="top">
             <el-row :gutter="20">
                 <el-col :span="12">
@@ -78,11 +85,12 @@ async function handleRemove() {
                 <el-col :span="12">
                     <el-form-item label="技能类型">
                         <el-select v-model="type" style="width: 100%;">
+                            <el-option label="普攻" value="normal" />
+                            <el-option label="核心被动" value="passive" />
                             <el-option label="红球" value="red" />
                             <el-option label="黄球" value="yellow" />
                             <el-option label="蓝球" value="blue" />
-                            <el-option label="被动" value="passive" />
-                            <el-option label="大招" value="ultimate" />
+                            <el-option label="终解" value="ultimate" />
                             <el-option label="QTE" value="qte" />
                         </el-select>
                     </el-form-item>
@@ -116,5 +124,23 @@ async function handleRemove() {
 <style scoped>
 .skill-form-item {
     margin-bottom: 20px;
+    position: relative;
+    /* 新增：为手柄定位设置相对布局 */
+    padding-left: 30px;
+    /* 新增：为手柄留出空间 */
+}
+
+/* 新增：拖拽手柄的样式 */
+.drag-handle {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: grab;
+    color: var(--el-text-color-placeholder);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
 }
 </style>

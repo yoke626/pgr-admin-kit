@@ -10,7 +10,7 @@
  * - ultimate: 终解/大招
  * - qte: QTE技能
  */
-export type SkillType = 'red' | 'yellow' | 'blue' | 'passive' | 'ultimate' | 'qte'
+export type SkillType = 'normal' | 'red' | 'yellow' | 'blue' | 'passive' | 'ultimate' | 'qte'
 
 /**
  * 单个技能的数据结构接口
