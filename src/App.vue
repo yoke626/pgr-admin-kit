@@ -103,9 +103,12 @@ const handleLogout = async () => {
 </template>
 
 <style scoped>
-.common-layout,
-.el-container {
+.common-layout {
   height: 100vh;
+}
+
+.common-layout>.el-container {
+  height: 100%;
 }
 
 .el-header {

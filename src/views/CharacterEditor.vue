@@ -38,4 +38,19 @@ const svg = `
 .el-row {
     height: 100%;
 }
+
+/* ▼▼▼ 请在末尾添加下面的新规则 ▼▼▼ */
+:deep(.el-loading-mask) {
+    position: fixed;
+    /* 偏移量需要根据 App.vue 的布局来确定 */
+    top: 79px;
+    /* 对应 <el-header> 的高度 */
+    left: 289px;
+    /* 对应 <el-aside> 的宽度 */
+    right: 14px;
+    bottom: 0;
+    /* 重置宽高，让 top/right/bottom/left 完全控制其尺寸 */
+    width: auto;
+    height: auto;
+}
 </style>
