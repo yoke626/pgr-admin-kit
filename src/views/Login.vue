@@ -92,12 +92,11 @@ const goToRegister = () => {
     height: 100vh;
     padding: 60px 10%;
 
-    /* 核心：确保图片等比缩放并覆盖全屏 */
+    /* 确保图片等比缩放并覆盖全屏 */
     background-size: cover;
     background-position: center center;
 }
 
-/* ▼▼▼ 新增：Slogan 样式 ▼▼▼ */
 .brand-slogan {
     position: absolute;
     bottom: 60px;

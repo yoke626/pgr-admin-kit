@@ -1,5 +1,3 @@
-// src/components/ConsciousnessItem.vue
-
 <script setup lang="ts">
 import type { IConsciousness } from '@/types/character';
 

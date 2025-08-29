@@ -7,7 +7,7 @@ import { ref, nextTick, onMounted } from 'vue'
 
 const characterStore = useCharacterStore()
 const { isLoading } = storeToRefs(characterStore)
-const editorFormCompRef = ref<InstanceType<typeof EditorForm> | null>(null) // 新增 ref
+const editorFormCompRef = ref<InstanceType<typeof EditorForm> | null>(null)
 
 const isMounted = ref(false)
 
@@ -58,18 +58,16 @@ const svg = `
 </template>
 
 <style scoped>
-/* 可以为页面添加一些内边距 */
 .character-editor-page {
     padding: 0 20px;
     height: 100%;
-    /* 新增：让 el-row 撑满页面 */
     display: flex;
     flex-direction: column;
 }
 
 .el-row {
     height: 100%;
-    /* 新增：处理滚动关键样式 */
+    /* 处理滚动关键样式 */
     flex-grow: 1;
     overflow: hidden;
     /* 防止父容器出现滚动条 */
@@ -81,8 +79,6 @@ const svg = `
     overflow-y: auto;
 }
 
-
-/* ▼▼▼ 请在末尾添加下面的新规则 ▼▼▼ */
 :deep(.el-loading-mask) {
     position: fixed;
     /* 偏移量需要根据 App.vue 的布局来确定 */

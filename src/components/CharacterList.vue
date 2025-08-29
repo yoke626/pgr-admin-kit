@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'; // 1. 引入 ref
+import { ref } from 'vue';
 import { useCharacterStore } from '@/stores/characterStore';
 import { storeToRefs } from 'pinia';
 import { ElMessageBox, ElMessage } from 'element-plus';
@@ -8,7 +8,7 @@ import type { ICharacter } from '@/types/character';
 const characterStore = useCharacterStore();
 const { characterList, activeCharacterId } = storeToRefs(characterStore);
 
-// 2. 为按钮创建独立的加载状态
+// 为按钮创建独立的加载状态
 const isAddingCharacter = ref(false);
 
 const handleSetCharacter = (id: string) => {
@@ -16,14 +16,14 @@ const handleSetCharacter = (id: string) => {
 };
 
 const handleAddCharacter = async () => {
-    isAddingCharacter.value = true; // 3. 开始加载
+    isAddingCharacter.value = true; // 开始加载
     try {
         await characterStore.addCharacter();
         ElMessage({ type: 'success', message: '新角色已创建' });
     } catch (error) {
         // 错误消息已在 store 中处理
     } finally {
-        isAddingCharacter.value = false; // 4. 结束加载
+        isAddingCharacter.value = false; // 结束加载
     }
 };
 
@@ -77,7 +77,6 @@ const handleDeleteCharacter = async (character: ICharacter) => {
 </template>
 
 <style scoped>
-/* 样式部分保持不变 */
 .character-list-panel {
     display: flex;
     flex-direction: column;

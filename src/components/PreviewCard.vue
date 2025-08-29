@@ -7,27 +7,24 @@ import draggable from 'vuedraggable'
 const characterStore = useCharacterStore()
 const { activeCharacter } = storeToRefs(characterStore)
 
-// 在 <script setup> 顶部添加
+
 const emit = defineEmits<{
     (e: 'scroll-to-skill', skillIndex: number): void
 }>()
 
 
-// 1. 创建模板引用来获取卡片DOM元素
 const cardWrapper = ref<HTMLElement | null>(null);
 const card = ref<HTMLElement | null>(null);
 
-// 2. 定义响应式变量来存储卡片的旋转角度和光标位置
 const rotateX = ref(0);
 const rotateY = ref(0);
 const glareX = ref(50);
 const glareY = ref(50);
 
-// 3. 处理鼠标移动事件
 const handleMouseMove = (e: MouseEvent) => {
     if (!cardWrapper.value) return;
 
-    // 获取 card 元素（而不是 wrapper）的边界
+    // 获取 card 元素的边界
     const rect = cardWrapper.value.getBoundingClientRect();
 
     const x = e.clientX - rect.left;
@@ -42,7 +39,7 @@ const handleMouseMove = (e: MouseEvent) => {
     const deltaX = x - centerX;
     const deltaY = y - centerY;
 
-    // 根据鼠标位置计算旋转角度，这里的 10 是灵敏度系数，可以调整
+    // 根据鼠标位置计算旋转角度
     rotateY.value = (deltaX / centerX) * 0.02;
     rotateX.value = -(deltaY / centerY) * 0.01;
 
@@ -51,7 +48,7 @@ const handleMouseMove = (e: MouseEvent) => {
     glareY.value = (y / height) * 100;
 };
 
-// 4. 处理鼠标移出事件，重置卡片状态
+// 处理鼠标移出事件，重置卡片状态
 const handleMouseLeave = (e: MouseEvent) => {
     if (!cardWrapper.value) return;
     // 判断鼠标是否真的移出了整个容器
@@ -68,7 +65,7 @@ const handleDragEnd = (event: { oldIndex: number, newIndex: number }) => {
     }
 };
 
-// 5. 在组件挂载和卸载时，添加/移除事件监听器
+// 在组件挂载和卸载时，添加/移除事件监听器
 onMounted(() => {
     if (cardWrapper.value) {
         cardWrapper.value.addEventListener('mousemove', handleMouseMove);
@@ -83,7 +80,7 @@ onUnmounted(() => {
     }
 });
 
-// 6. 将响应式变量转换为计算属性，用于绑定到 style
+// 将响应式变量转换为计算属性，用于绑定到 style
 const cardStyle = computed(() => ({
     '--rotate-x': `${rotateX.value}deg`,
     '--rotate-y': `${rotateY.value}deg`,
@@ -162,10 +159,8 @@ const skillTagType = (type: string) => {
 <style scoped lang="scss">
 .preview-card-container {
     padding: 20px;
-    /* 新增样式 */
     height: 100%;
     overflow-y: auto;
-    /* 将滚动条控制权交给根容器 */
 }
 
 .card-3d-wrapper {
@@ -174,17 +169,12 @@ const skillTagType = (type: string) => {
 
 .preview-card {
     position: relative;
-    // ▼▼▼ 新增：设置背景为透明，让伪元素背景可见 ▼▼▼
     background: transparent;
-    // ▼▼▼ 新增：设置圆角，让描边效果更好看 ▼▼▼
     border-radius: 8px;
-    // ▼▼▼ 新增：添加 transform-style ▼▼▼
     transform-style: preserve-3d;
-    // ▼▼▼ 新增：应用3D旋转的CSS变量 ▼▼▼
     transform: rotateX(var(--rotate-x)) rotateY(var(--rotate-y));
     transition: transform 0.1s ease-out;
 
-    // ▼▼▼ 新增：描边高光伪元素 ::before ▼▼▼
     &::before {
         content: '';
         position: absolute;
@@ -252,18 +242,13 @@ const skillTagType = (type: string) => {
 .skill-display-item {
     margin-bottom: 15px;
     cursor: pointer;
-    /* 新增：鼠标指针变为手形 */
     border-radius: 4px;
-    /* 新增：为高亮做准备 */
     padding: 10px;
-    /* 新增：增加内边距 */
     transition: background-color 0.3s;
-    /* 新增：平滑过渡 */
 }
 
 .skill-display-item:hover {
     background-color: var(--el-fill-color-light);
-    /* 新增：悬浮效果 */
 }
 
 .skill-header {

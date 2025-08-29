@@ -37,7 +37,6 @@ export interface ISkill {
 
 /**
  * 推荐意识的数据结构接口
- * (我们先定义结构，具体意识列表后续会作为常量数据引入)
  */
 export interface IConsciousness {
   /** 意识的唯一ID，用于在列表中进行精确查找和识别 */
@@ -91,7 +90,6 @@ export interface ICharacterSnapshot {
 
 /**
  * 最终的角色核心数据结构接口
- * 这是我们整个应用中流动的数据的“总蓝图”
  */
 export interface ICharacter {
   /** 角色的唯一标识符，可以使用英文名或特定ID，便于程序处理 */
@@ -138,15 +136,11 @@ export interface ICharacter {
    */
   recommendedConsciousness: IConsciousness[]
 
-  /** 新增：该角色的所有快照集合 */
   snapshots: ICharacterSnapshot[]
 
-  /** 新增：创建时间戳 */
   createdAt?: number
 
-  /** 新增：最后更新时间戳 */
   updatedAt?: number
 
-  /** 新增：操作日志 */
   log?: string[]
 }
