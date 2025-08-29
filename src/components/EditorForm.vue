@@ -4,13 +4,13 @@ import { computed, ref, watch, nextTick } from 'vue'
 import { useCharacterStore } from '@/stores/characterStore'
 import { QUALITY_OPTIONS, CLASS_OPTIONS, FRAME_TYPE_OPTIONS, DAMAGE_TYPE_OPTIONS } from '@/constants/characterOptions'
 import SkillFormItem from './SkillFormItem.vue';
-import ConsciousnessItem from './ConsciousnessItem.vue'; // 引入组件
+import ConsciousnessItem from './ConsciousnessItem.vue';
 import type { ISkill, ICharacter } from '@/types/character';
 import { storeToRefs } from 'pinia';
 import { ALL_CONSCIOUSNESS } from '@/database/consciousnessData';
 import type { FormInstance, FormRules, UploadProps } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, Upload, Download, Delete, Search } from '@element-plus/icons-vue'; // 引入Search icon
+import { Plus, Upload, Download, Delete, Search } from '@element-plus/icons-vue';
 import { readJson } from '@/utils/fileReader';
 import draggable from 'vuedraggable'
 
@@ -19,9 +19,9 @@ const characterStore = useCharacterStore()
 // 使用 activeCharacter getter
 const { activeCharacter } = storeToRefs(characterStore);
 const editorFormRef = ref<FormInstance>();
-const skillFormItemsRef = ref<HTMLElement[]>([]); // 新增：用于存储技能表单DOM元素的引用
+const skillFormItemsRef = ref<HTMLElement[]>([]); // 用于存储技能表单DOM元素的引用
 
-// 新增：处理滚动和高亮的函数
+// 处理滚动和高亮的函数
 const scrollToSkill = (index: number) => {
     const skillElement = skillFormItemsRef.value[index];
     if (skillElement) {
@@ -46,10 +46,10 @@ const handleDragEnd = (event: { oldIndex: number, newIndex: number }) => {
 };
 
 
-// --- 新增：为意识筛选器创建响应式变量 ---
+// 为意识筛选器创建响应式变量
 const consciousnessFilter = ref('');
 
-// --- 新增：创建计算属性以根据筛选文本过滤意识列表 ---
+// 创建计算属性以根据筛选文本过滤意识列表
 const filteredConsciousness = computed(() => {
     if (!consciousnessFilter.value) {
         return ALL_CONSCIOUSNESS;
@@ -60,7 +60,7 @@ const filteredConsciousness = computed(() => {
     );
 });
 
-// 1. 新增用于格式化时间戳的计算属性
+// 用于格式化时间戳的计算属性
 const createdAtFormatted = computed(() => {
     if (activeCharacter.value?.createdAt) {
         return new Date(activeCharacter.value.createdAt).toLocaleString();
@@ -146,16 +146,16 @@ function handleRemoveSkill(index: number) {
     characterStore.removeSkill(index);
 }
 
-// --- 新增：处理意识卡片点击事件的函数 ---
+// 处理意识卡片点击事件的函数
 function handleToggleConsciousness(id: number) {
     const currentIds = [...selectedConsciousnessIds.value];
     const index = currentIds.indexOf(id);
     if (index > -1) {
-        currentIds.splice(index, 1); // 如果已存在，则移除
+        currentIds.splice(index, 1);
     } else {
-        currentIds.push(id); // 如果不存在，则添加
+        currentIds.push(id);
     }
-    selectedConsciousnessIds.value = currentIds; // 触发 setter
+    selectedConsciousnessIds.value = currentIds;
 }
 
 
@@ -189,7 +189,7 @@ async function handleValidate() {
     })
 }
 
-// 新增：处理清空日志的函数
+// 处理清空日志的函数
 async function handleClearLog() {
     try {
         await ElMessageBox.confirm(
@@ -202,7 +202,6 @@ async function handleClearLog() {
             }
         );
         characterStore.clearLog();
-        // 立即显示成功提示
         ElMessage.success('操作日志已清空');
     } catch (error) {
         ElMessage.info('已取消操作');
@@ -214,7 +213,7 @@ const activeTab = computed({
     set: (val) => (characterStore.activeEditorTab = val),
 });
 
-// 新增：一个专门用来设置 activeTab 的函数
+// 一个专门用来设置 activeTab 的函数
 const setActiveTab = (tabName: string) => {
     activeTab.value = tabName;
 };
@@ -284,7 +283,7 @@ async function handleDeleteCharacter() {
         ElMessage({ type: 'info', message: '已取消删除' });
     }
 }
-// 新增：将方法暴露给父组件
+// 将方法暴露给父组件
 defineExpose({ scrollToSkill, setActiveTab });
 </script>
 
@@ -468,7 +467,6 @@ defineExpose({ scrollToSkill, setActiveTab });
 </template>
 
 <style scoped>
-/* --- 新增/修改：意识搭配页样式 --- */
 .consciousness-selector {
     display: flex;
     flex-direction: column;
@@ -485,7 +483,6 @@ defineExpose({ scrollToSkill, setActiveTab });
     gap: 15px;
 }
 
-/* --- 原有样式 --- */
 .avatar-uploader .avatar {
     width: 128px;
     height: 128px;
@@ -531,8 +528,6 @@ defineExpose({ scrollToSkill, setActiveTab });
     position: sticky;
     top: 0px;
     z-index: 1;
-    /* 确保它能覆盖在滚动内容之上 */
-    /* 使用 Element Plus 的背景色变量，使其能自适应主题 */
     background-color: var(--el-bg-color);
 }
 
@@ -578,7 +573,6 @@ defineExpose({ scrollToSkill, setActiveTab });
     font-weight: bold;
 }
 
-/* 新增：高亮效果的 CSS */
 :deep(.is-highlighted) {
     border: 2px solid var(--el-color-primary);
     border-radius: 8px;
@@ -586,7 +580,6 @@ defineExpose({ scrollToSkill, setActiveTab });
     transition: all 0.3s ease-in-out;
 }
 
-/* 新增：用于卡片头部的 flex 布局 */
 .card-header-with-button {
     display: flex;
     justify-content: space-between;

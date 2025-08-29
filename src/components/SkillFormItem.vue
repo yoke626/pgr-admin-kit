@@ -125,12 +125,9 @@ async function handleRemove() {
 .skill-form-item {
     margin-bottom: 20px;
     position: relative;
-    /* 新增：为手柄定位设置相对布局 */
     padding-left: 30px;
-    /* 新增：为手柄留出空间 */
 }
 
-/* 新增：拖拽手柄的样式 */
 .drag-handle {
     position: absolute;
     left: 0;

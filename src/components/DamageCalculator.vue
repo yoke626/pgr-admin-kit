@@ -20,7 +20,7 @@ const { isDark } = storeToRefs(themeStore);
 const chartContainer = ref<HTMLElement | null>(null);
 let chartInstance: echarts.ECharts | null = null;
 
-// --- 快照对比相关 ---
+// 快照对比相关
 const selectedSnapshots = ref<string[]>([]);
 const comparedSnapshots = computed<ICharacterSnapshot[]>(() => {
     if (!props.character) return [];
@@ -62,7 +62,7 @@ const handleTakeSnapshot = () => {
     ElMessage.success('快照已生成！');
 };
 
-// FIX 2: 允许在输入时删空内容
+// 允许在输入时删空内容
 const handleUpdateSnapshotName = (snapshotId: string, newName: string) => {
     characterStore.updateSnapshotName(snapshotId, newName);
 };
@@ -129,7 +129,7 @@ const renderChart = () => {
     }
 };
 
-// FIX 3: 优化 watch，仅监听与图表相关的属性
+// 优化 watch，仅监听与图表相关的属性
 watch(
     () => {
         if (!props.character) return [isDark.value];
@@ -147,7 +147,7 @@ watch(
         renderChart();
     },
     {
-        deep: true, // deep 仍然需要，用于监听 skills 数组内部的变化
+        deep: true, // 用于监听 skills 数组内部的变化
         immediate: true
     }
 );
@@ -212,7 +212,6 @@ onUnmounted(() => window.removeEventListener('resize', resizeChart));
 </template>
 
 <style scoped>
-/* FIX 1: 添加 :deep() 样式来隐藏 checkbox 的 label 文本 */
 .snapshot-item :deep(.el-checkbox__label) {
     display: none;
 }

@@ -1,8 +1,3 @@
-/* src/style.css */
-
-/* 移除了之前自定义的 :root 变量 */
-
-/* 清除所有元素的默认内外边距 */
 * {
   margin: 0;
   padding: 0;

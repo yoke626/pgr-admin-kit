@@ -1,5 +1,3 @@
-// src/database/consciousnessData.ts
-
 import type { IConsciousness } from '@/types/character'
 
 /**

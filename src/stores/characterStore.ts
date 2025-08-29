@@ -22,9 +22,9 @@ const createDefaultCharacterState = (): ICharacter => ({
   skills: [],
   recommendedConsciousness: [],
   snapshots: [],
-  createdAt: Date.now(), // 1. 新增：记录创建时间
-  updatedAt: Date.now(), // 2. 新增：记录更新时间
-  log: [`[${new Date().toLocaleString()}] 创建了新角色。`], // 1. 初始化日志
+  createdAt: Date.now(), // 记录创建时间
+  updatedAt: Date.now(), // 记录更新时间
+  log: [`[${new Date().toLocaleString()}] 创建了新角色。`], // 初始化日志
 })
 
 export const useCharacterStore = defineStore('character', {
@@ -47,7 +47,7 @@ export const useCharacterStore = defineStore('character', {
 
   actions: {
     /**
-     * 新增：统一的日志记录方法
+     * 统一的日志记录方法
      */
     _addLog(message: string) {
       if (this.activeCharacter) {
@@ -57,7 +57,7 @@ export const useCharacterStore = defineStore('character', {
         const logEntry = `[${new Date().toLocaleString()}] ${message}`
         this.activeCharacter.log.unshift(logEntry) // unshift 将最新日志放在最前面
 
-        // 可选：保持日志数组大小，防止无限增长
+        // 保持日志数组大小，防止无限增长
         if (this.activeCharacter.log.length > 50) {
           this.activeCharacter.log.pop()
         }
@@ -80,8 +80,6 @@ export const useCharacterStore = defineStore('character', {
 
         if (error) throw error
 
-        // Supabase 返回的是 { character_data: ICharacter }[]
-        // 我们需要解构并转换回 ICharacter[]
         this.characters = data.map((item: { character_data: ICharacter }) => item.character_data)
 
         // 如果列表不为空，但没有激活ID，则默认激活第一个
@@ -201,8 +199,6 @@ export const useCharacterStore = defineStore('character', {
       }, 300)
     },
 
-    // ... 其他 actions ...
-
     updateCharacterInfo<K extends keyof ICharacter>(field: K, value: ICharacter[K]) {
       if (this.activeCharacter) {
         this.activeCharacter[field] = value
@@ -212,7 +208,7 @@ export const useCharacterStore = defineStore('character', {
 
     resetCharacterState() {
       if (this.activeCharacter) {
-        this._addLog('执行了重置表单操作。') // 2. 记录重置日志
+        this._addLog('执行了重置表单操作。') // 记录重置日志
         const index = this.characters.findIndex((c) => c.id === this.activeCharacterId)
         if (index !== -1) {
           const oldId = this.activeCharacterId
@@ -269,7 +265,7 @@ export const useCharacterStore = defineStore('character', {
     },
 
     /**
-     * 新增：清空当前角色的操作日志
+     * 清空当前角色的操作日志
      */
     async clearLog() {
       if (this.activeCharacter) {
@@ -348,7 +344,7 @@ export const useCharacterStore = defineStore('character', {
             id: newCharId!,
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            log: [`[${new Date().toLocaleString()}] 从JSON文件导入角色'${characterData.name}'。`], // 4. 记录导入日志
+            log: [`[${new Date().toLocaleString()}] 从JSON文件导入角色'${characterData.name}'。`], // 记录导入日志
           }
           this.characters[index] = imported
           this._updateActiveCharacterInDb()

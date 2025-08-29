@@ -1,5 +1,3 @@
-// src/constants/characterOptions.ts
-
 /**
  * 定义下拉选择项的通用接口
  */
@@ -30,7 +28,6 @@ export const CLASS_OPTIONS: SelectOption[] = [
   { value: '观测者', label: '观测者' },
 ]
 
-// 你可以继续在这里为 `frameType`, `damageType` 等创建更多的选项数组...
 /**
  * 机体框架类型选项
  */

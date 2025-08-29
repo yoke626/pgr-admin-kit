@@ -15,8 +15,5 @@ export const useThemeStore = defineStore(
       toggleTheme,
     }
   },
-  {
-    // 开启持久化
-    //persist: true,
-  }
+  {}
 )
