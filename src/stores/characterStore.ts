@@ -256,6 +256,28 @@ export const useCharacterStore = defineStore('character', {
       }
     },
 
+    /**
+     * 拖拽排序技能后触发持久化
+     * 注意：数组的实际排序已经由 vuedraggable 的 @update:list 事件在视图层完成。
+     * 这个 action 只负责记录日志和触发数据库更新。
+     */
+    reorderSkills() {
+      if (this.activeCharacter) {
+        this._addLog(`调整了技能顺序。`)
+        this._updateActiveCharacterInDb() // 直接调用更新即可
+      }
+    },
+
+    /**
+     * 新增：清空当前角色的操作日志
+     */
+    async clearLog() {
+      if (this.activeCharacter) {
+        this.activeCharacter.log = [`[${new Date().toLocaleString()}] 清空了操作日志。`] // 清空并保留一条记录
+        await this._updateActiveCharacterInDb() // 调用更新
+      }
+    },
+
     updateRecommendedConsciousness(newSelection: IConsciousness[]) {
       if (this.activeCharacter) {
         this.activeCharacter.recommendedConsciousness = newSelection

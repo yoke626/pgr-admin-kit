@@ -28,9 +28,11 @@ const handleAddCharacter = async () => {
 };
 
 const handleDeleteCharacter = async (character: ICharacter) => {
+    const characterNameToDelete = character.name;
+
     try {
         await ElMessageBox.confirm(
-            `确定要删除角色 "${character.name}" 吗？此操作不可撤销。`,
+            `确定要删除角色 "${characterNameToDelete}" 吗？此操作不可撤销。`,
             '删除确认',
             {
                 confirmButtonText: '确定删除',
@@ -40,7 +42,7 @@ const handleDeleteCharacter = async (character: ICharacter) => {
         );
         // 调用 store 中的删除 action
         characterStore.deleteCharacter(character.id);
-        ElMessage({ type: 'success', message: `角色 "${character.name}" 已删除` });
+        ElMessage({ type: 'success', message: `角色 "${characterNameToDelete}" 已删除` });
     } catch (error) {
         ElMessage({ type: 'info', message: '已取消删除' });
     }

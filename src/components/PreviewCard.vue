@@ -2,10 +2,15 @@
 import { useCharacterStore } from '@/stores/characterStore'
 import { storeToRefs } from 'pinia'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import draggable from 'vuedraggable'
 
 const characterStore = useCharacterStore()
 const { activeCharacter } = storeToRefs(characterStore)
 
+// 在 <script setup> 顶部添加
+const emit = defineEmits<{
+    (e: 'scroll-to-skill', skillIndex: number): void
+}>()
 
 
 // 1. 创建模板引用来获取卡片DOM元素
@@ -22,7 +27,9 @@ const glareY = ref(50);
 const handleMouseMove = (e: MouseEvent) => {
     if (!cardWrapper.value) return;
 
+    // 获取 card 元素（而不是 wrapper）的边界
     const rect = cardWrapper.value.getBoundingClientRect();
+
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
@@ -36,8 +43,8 @@ const handleMouseMove = (e: MouseEvent) => {
     const deltaY = y - centerY;
 
     // 根据鼠标位置计算旋转角度，这里的 10 是灵敏度系数，可以调整
-    rotateY.value = (deltaX / centerX) * 0.2;
-    rotateX.value = -(deltaY / centerY) * 0.2;
+    rotateY.value = (deltaX / centerX) * 0.02;
+    rotateX.value = -(deltaY / centerY) * 0.01;
 
     // 更新光标位置百分比
     glareX.value = (x / width) * 100;
@@ -45,9 +52,20 @@ const handleMouseMove = (e: MouseEvent) => {
 };
 
 // 4. 处理鼠标移出事件，重置卡片状态
-const handleMouseLeave = () => {
-    rotateX.value = 0;
-    rotateY.value = 0;
+const handleMouseLeave = (e: MouseEvent) => {
+    if (!cardWrapper.value) return;
+    // 判断鼠标是否真的移出了整个容器
+    if (!cardWrapper.value.contains(e.relatedTarget as Node)) {
+        rotateX.value = 0;
+        rotateY.value = 0;
+    }
+};
+
+const handleDragEnd = (event: { oldIndex: number, newIndex: number }) => {
+    // 只有当索引确实发生变化时，才执行操作
+    if (event.oldIndex !== event.newIndex) {
+        characterStore.reorderSkills();
+    }
 };
 
 // 5. 在组件挂载和卸载时，添加/移除事件监听器
@@ -85,8 +103,8 @@ const skillTagType = (type: string) => {
 </script>
 
 <template>
-    <div class="preview-card-contatiner">
-        <div ref="cardWrapper" class="card-3d-wrapper">
+    <div ref="cardWrapper" class="preview-card-contatiner">
+        <div class="card-3d-wrapper">
             <div ref="card" class="preview-card" :style="cardStyle">
                 <el-card>
                     <template #header>
@@ -107,14 +125,18 @@ const skillTagType = (type: string) => {
 
                         <el-divider>技能</el-divider>
                         <div v-if="activeCharacter.skills.length === 0" class="empty-skills">暂未配置技能</div>
-                        <div v-for="(skill, index) in activeCharacter.skills" v-else :key="index"
-                            class="skill-display-item">
-                            <div class="skill-header">
-                                <strong>{{ skill.name }}</strong>
-                                <el-tag size="small" :type="skillTagType(skill.type)">{{ skill.type }}</el-tag>
-                            </div>
-                            <p class="skill-description">{{ skill.description }}</p>
-                        </div>
+                        <draggable v-else :list="activeCharacter.skills" item-key="name" animation="300"
+                            @update:list="activeCharacter.skills = $event" @end="handleDragEnd">
+                            <template #item="{ element: skill, index }">
+                                <div class="skill-display-item" @click="emit('scroll-to-skill', index)">
+                                    <div class="skill-header">
+                                        <strong>{{ skill.name }}</strong>
+                                        <el-tag size="small" :type="skillTagType(skill.type)">{{ skill.type }}</el-tag>
+                                    </div>
+                                    <p class="skill-description">{{ skill.description }}</p>
+                                </div>
+                            </template>
+                        </draggable>
 
 
                         <el-divider>推荐意识</el-divider>
@@ -140,6 +162,10 @@ const skillTagType = (type: string) => {
 <style scoped lang="scss">
 .preview-card-container {
     padding: 20px;
+    /* 新增样式 */
+    height: 100%;
+    overflow-y: auto;
+    /* 将滚动条控制权交给根容器 */
 }
 
 .card-3d-wrapper {
@@ -225,6 +251,19 @@ const skillTagType = (type: string) => {
 
 .skill-display-item {
     margin-bottom: 15px;
+    cursor: pointer;
+    /* 新增：鼠标指针变为手形 */
+    border-radius: 4px;
+    /* 新增：为高亮做准备 */
+    padding: 10px;
+    /* 新增：增加内边距 */
+    transition: background-color 0.3s;
+    /* 新增：平滑过渡 */
+}
+
+.skill-display-item:hover {
+    background-color: var(--el-fill-color-light);
+    /* 新增：悬浮效果 */
 }
 
 .skill-header {

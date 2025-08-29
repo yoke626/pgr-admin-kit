@@ -97,6 +97,22 @@ const handleLogout = async () => {
       </el-container>
 
       <el-dialog v-model="helpDialogVisible" title="帮助说明" width="50%">
+        <div class="help-content">
+          <h4>欢迎使用 PGR-Admin-Kit！</h4>
+          <p>这是一款为《战双帕弥什》玩家设计的角色配置中台工具，旨在提供一个方便、强大且云端同步的角色数据管理方案。</p>
+          <el-divider />
+          <h5>核心功能：</h5>
+          <ul>
+            <li><b>角色管理:</b> 在左侧列表可以新建、切换或删除角色。所有数据都将自动保存到您的云端账户。</li>
+            <li><b>数据编辑:</b> 在左侧编辑区，您可以通过不同的标签页详细配置角色的基础信息、技能、意识搭配等。</li>
+            <li><b>实时预览:</b> 右侧的卡片会实时根据您的修改进行更新，提供最直观的视觉反馈。</li>
+            <li><b>拖拽排序:</b> 在“技能配置”标签页和预览卡片的技能区域，您可以直接拖动技能卡片来调整它们的显示顺序。</li>
+            <li><b>数据看板:</b> 在“数据看板”标签页中，系统会根据您配置的属性和技能倍率，自动计算总伤害期望和各技能的伤害分布。</li>
+            <li><b>配置快照:</b> 您可以在“数据看板”中为当前角色的配置“拍摄快照”。这会保存当前的所有核心数据，方便您后续进行不同配置方案的优劣对比。</li>
+            <li><b>导入/导出:</b> 在“操作”标签页，您可以将当前角色的配置导出为<code>.json</code>文件进行备份或分享，也可以从<code>.json</code>文件导入角色数据。</li>
+            <li><b>主题切换:</b> 点击顶栏的太阳/月亮图标，可以轻松切换亮色/暗色主题。</li>
+          </ul>
+        </div>
       </el-dialog>
     </div>
   </template>
@@ -146,5 +162,47 @@ const handleLogout = async () => {
   color: var(--el-color-primary);
   display: flex;
   align-items: center;
+}
+
+.help-content {
+  line-height: 1.8;
+  /* 增加全局行高 */
+}
+
+.help-content h4 {
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+
+.help-content h5 {
+  font-size: 18px;
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+
+.help-content p {
+  font-size: 15px;
+  margin-bottom: 16px;
+  /* 增加段落间距 */
+  color: var(--el-text-color-regular);
+}
+
+.help-content ul {
+  padding-left: 25px;
+  /* 列表增加内边距 */
+}
+
+.help-content li {
+  margin-bottom: 10px;
+  /* 增加列表项间距 */
+  font-size: 15px;
+  color: var(--el-text-color-regular);
+}
+
+.help-content code {
+  background-color: var(--el-fill-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', Courier, monospace;
 }
 </style>

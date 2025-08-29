@@ -12,13 +12,39 @@ import type { FormInstance, FormRules, UploadProps } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Upload, Download, Delete, Search } from '@element-plus/icons-vue'; // 引入Search icon
 import { readJson } from '@/utils/fileReader';
-import draggable from 'vuedraggable';
+import draggable from 'vuedraggable'
 
 const characterStore = useCharacterStore()
 
 // 使用 activeCharacter getter
 const { activeCharacter } = storeToRefs(characterStore);
 const editorFormRef = ref<FormInstance>();
+const skillFormItemsRef = ref<HTMLElement[]>([]); // 新增：用于存储技能表单DOM元素的引用
+
+// 新增：处理滚动和高亮的函数
+const scrollToSkill = (index: number) => {
+    const skillElement = skillFormItemsRef.value[index];
+    if (skillElement) {
+        // 滚动到元素位置
+        skillElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // 添加高亮效果
+        skillElement.classList.add('is-highlighted');
+
+        // 2秒后移除高亮
+        setTimeout(() => {
+            skillElement.classList.remove('is-highlighted');
+        }, 2000);
+    }
+};
+
+const handleDragEnd = (event: { oldIndex: number, newIndex: number }) => {
+    // 只有当索引确实发生变化时，才执行操作
+    if (event.oldIndex !== event.newIndex) {
+        characterStore.reorderSkills();
+    }
+};
+
 
 // --- 新增：为意识筛选器创建响应式变量 ---
 const consciousnessFilter = ref('');
@@ -163,10 +189,35 @@ async function handleValidate() {
     })
 }
 
+// 新增：处理清空日志的函数
+async function handleClearLog() {
+    try {
+        await ElMessageBox.confirm(
+            '确定要清空所有操作日志吗？此操作不可撤销。',
+            '清空确认',
+            {
+                confirmButtonText: '确定清空',
+                cancelButtonText: '取消',
+                type: 'warning',
+            }
+        );
+        characterStore.clearLog();
+        // 立即显示成功提示
+        ElMessage.success('操作日志已清空');
+    } catch (error) {
+        ElMessage.info('已取消操作');
+    }
+}
+
 const activeTab = computed({
     get: () => characterStore.activeEditorTab,
     set: (val) => (characterStore.activeEditorTab = val),
 });
+
+// 新增：一个专门用来设置 activeTab 的函数
+const setActiveTab = (tabName: string) => {
+    activeTab.value = tabName;
+};
 
 const damageCalculatorRef = ref<InstanceType<typeof DamageCalculator> | null>(null);
 
@@ -215,10 +266,11 @@ async function handleImportJson() {
 
 async function handleDeleteCharacter() {
     if (!activeCharacter.value) return;
-
+    const characterNameToDelete = activeCharacter.value.name;
+    const characterIdToDelete = activeCharacter.value.id;
     try {
         await ElMessageBox.confirm(
-            `此操作将永久删除角色 "${activeCharacter.value.name}"，请谨慎操作。`,
+            `此操作将永久删除角色 "${characterNameToDelete}"，请谨慎操作。`,
             '删除确认',
             {
                 confirmButtonText: '确定删除',
@@ -226,20 +278,21 @@ async function handleDeleteCharacter() {
                 type: 'warning',
             }
         );
-        await characterStore.deleteCharacter(activeCharacter.value.id);
-        ElMessage({ type: 'success', message: `角色 "${activeCharacter.value.name}" 已删除` });
+        characterStore.deleteCharacter(characterIdToDelete);
+        ElMessage({ type: 'success', message: `角色 "${characterNameToDelete}" 已删除` });
     } catch (error) {
         ElMessage({ type: 'info', message: '已取消删除' });
     }
 }
-
+// 新增：将方法暴露给父组件
+defineExpose({ scrollToSkill, setActiveTab });
 </script>
 
 <template>
     <div class="editor-form-container">
         <template v-if="activeCharacter">
             <el-tabs v-model="activeTab" type="border-card" class="editor-tabs">
-                <el-tab-pane label="基础信息">
+                <el-tab-pane label="基础信息" name="基础信息">
                     <el-form ref="editorFormRef" :model="activeCharacter" :rules="formRules" label-width="100px">
                         <el-form-item label="角色名称" prop="name">
                             <el-input v-model="name" placeholder="请输入角色中文名" />
@@ -290,15 +343,22 @@ async function handleDeleteCharacter() {
 
                     </el-form>
                 </el-tab-pane>
-                <el-tab-pane label="技能配置">
-                    <SkillFormItem v-for="(skill, index) in activeCharacter.skills" :key="index" :skill="skill"
-                        :index="index" @update:skill="handleUpdateSkill" @remove="handleRemoveSkill" />
+                <el-tab-pane label="技能配置" name="技能配置">
+                    <draggable :list="activeCharacter.skills" item-key="name" handle=".drag-handle" animation="300"
+                        @update:list="activeCharacter.skills = $event" @end="handleDragEnd">
+                        <template #item="{ element: skill, index }">
+                            <div :ref="el => { if (el) skillFormItemsRef[index] = el as HTMLElement }">
+                                <SkillFormItem :skill="skill" :index="index" @update:skill="handleUpdateSkill"
+                                    @remove="handleRemoveSkill" />
+                            </div>
+                        </template>
+                    </draggable>
 
                     <el-button type="primary" style="width: 100%;" plain @click="characterStore.addSkill">
                         添加新技能
                     </el-button>
                 </el-tab-pane>
-                <el-tab-pane label="意识搭配">
+                <el-tab-pane label="意识搭配" name="意识搭配">
                     <div class="consciousness-selector">
                         <el-input v-model="consciousnessFilter" placeholder="输入关键词筛选意识..." class="filter-input"
                             :prefix-icon="Search" clearable />
@@ -314,7 +374,7 @@ async function handleDeleteCharacter() {
                 <el-tab-pane label="数据看板" name="数据看板" lazy>
                     <DamageCalculator ref="damageCalculatorRef" :character="activeCharacter" />
                 </el-tab-pane>
-                <el-tab-pane label="操作">
+                <el-tab-pane label="操作" name="操作">
                     <div class="action-panel">
                         <el-card header="文件操作">
                             <div class="action-buttons">
@@ -361,7 +421,16 @@ async function handleDeleteCharacter() {
                                 </el-descriptions-item>
                             </el-descriptions>
                         </el-card>
-                        <el-card header="操作日志" style="margin-top: 20px;">
+                        <el-card style="margin-top: 20px;">
+                            <template #header>
+                                <div class="card-header-with-button">
+                                    <span>操作日志</span>
+                                    <el-button type="danger" :icon="Delete" text circle
+                                        :disabled="!activeCharacter.log || activeCharacter.log.length <= 1"
+                                        @click="handleClearLog">
+                                    </el-button>
+                                </div>
+                            </template>
                             <div class="log-container">
                                 <el-empty v-if="!activeCharacter.log || activeCharacter.log.length === 0"
                                     description="暂无日志记录" />
@@ -454,11 +523,17 @@ async function handleDeleteCharacter() {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    margin: -1px;
 }
 
-:deep(.el-tabs__content) {
-    flex-grow: 1;
-    overflow-y: auto;
+
+:deep(.el-tabs__header) {
+    position: sticky;
+    top: 0px;
+    z-index: 1;
+    /* 确保它能覆盖在滚动内容之上 */
+    /* 使用 Element Plus 的背景色变量，使其能自适应主题 */
+    background-color: var(--el-bg-color);
 }
 
 .empty-state-card {
@@ -501,5 +576,20 @@ async function handleDeleteCharacter() {
 .danger-zone :deep(.el-card__header) {
     color: var(--el-color-danger);
     font-weight: bold;
+}
+
+/* 新增：高亮效果的 CSS */
+:deep(.is-highlighted) {
+    border: 2px solid var(--el-color-primary);
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(var(--el-color-primary-rgb), 0.3);
+    transition: all 0.3s ease-in-out;
+}
+
+/* 新增：用于卡片头部的 flex 布局 */
+.card-header-with-button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 </style>
