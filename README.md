@@ -70,7 +70,7 @@ PGR-Admin-Kit 是一个模拟游戏公司内部使用的 **“技术中台”** 
 ## **5\. 安装与运行**
 
 1. **克隆仓库**  
-   git clone \[https://github.com/yoke626/pgr-admin-kit.git\](https://github.com/yoke626/pgr-admin-kit.git)
+   git clone https://github.com/yoke626/pgr-admin-kit.git
 
 2. **进入项目目录**  
    cd pgr-admin-kit
